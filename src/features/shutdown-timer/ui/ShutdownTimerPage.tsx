@@ -9,8 +9,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { invoke } from "@tauri-apps/api/core";
-import { Play, Pause, XCircle, Check, Laptop, Hourglass, AlertTriangle, Loader2 } from "lucide-react";
+import { Play, Pause, XCircle, Check, Laptop, Hourglass, AlertTriangle, Loader2, Shield } from "lucide-react";
 
 type TimerStatus = "idle" | "running" | "paused" | "finished" | "triggering";
 const WARNING_THRESHOLD_SECONDS = 10;
@@ -29,22 +36,29 @@ const safeInvoke = async <T,>(cmd: string, args?: Record<string, any>): Promise<
   }
   // Browser mock
   await new Promise((resolve) => setTimeout(resolve, 200));
-  if (cmd === "shutdown_after") {
+  if (cmd === "execute_power_action") {
+    const action = args?.action ?? "shutdown";
     const secs = args?.seconds ?? 0;
     return (secs === 0
-      ? "Shutdown initiated immediately."
-      : `Shutdown scheduled in ${secs} seconds. Run 'shutdown /a' to cancel.`) as T;
+      ? `${action.charAt(0).toUpperCase() + action.slice(1)} initiated immediately.`
+      : `${action.charAt(0).toUpperCase() + action.slice(1)} scheduled in ${secs} seconds.`) as T;
   }
-  if (cmd === "cancel_shutdown") {
-    return "Scheduled shutdown cancelled successfully." as T;
+  if (cmd === "cancel_power_action") {
+    return "Scheduled action cancelled successfully." as T;
   }
   throw new Error(`Mock: "${cmd}" not implemented`);
 };
 
 export default function ShutdownTimerPage() {
+  const [action, setAction] = useState<"shutdown" | "sleep" | "hibernate" | "restart">("shutdown");
   const [inputHours, setInputHours] = useState(0);
   const [inputMinutes, setInputMinutes] = useState(1);
   const [inputSeconds, setInputSeconds] = useState(0);
+
+  // Sleep Wake Up Duration States (Removed as wake schedule is disabled)
+  // const [sleepHours, setSleepHours] = useState(0);
+  // const [sleepMinutes, setSleepMinutes] = useState(30);
+  // const [sleepSeconds, setSleepSeconds] = useState(0);
 
   const [status, setStatus] = useState<TimerStatus>("idle");
   const [timeLeft, setTimeLeft] = useState(0);
@@ -53,6 +67,7 @@ export default function ShutdownTimerPage() {
   // Command feedback
   const [commandMessage, setCommandMessage] = useState("");
   const [commandError, setCommandError] = useState("");
+  const [showAdminPromptModal, setShowAdminPromptModal] = useState(false);
 
   const timerIntervalRef = useRef<number | null>(null);
   const targetTimeRef = useRef<number>(0);
@@ -123,16 +138,29 @@ export default function ShutdownTimerPage() {
     setInputSeconds(0);
   }, []);
 
-  const startTimer = useCallback(() => {
+  const startTimer = useCallback(async () => {
     const totalSecs = inputHours * 3600 + inputMinutes * 60 + inputSeconds;
     if (totalSecs <= 0) return;
+
+    if (action === "sleep") {
+      try {
+        const isAdmin = await invoke<boolean>("is_admin");
+        if (!isAdmin) {
+          setShowAdminPromptModal(true);
+          return;
+        }
+      } catch (err) {
+        console.error("Failed to check admin status:", err);
+      }
+    }
+
     setCommandMessage("");
     setCommandError("");
     setTotalDuration(totalSecs);
     setTimeLeft(totalSecs);
     setStatus("running");
     targetTimeRef.current = Date.now() + totalSecs * 1000;
-  }, [inputHours, inputMinutes, inputSeconds]);
+  }, [inputHours, inputMinutes, inputSeconds, action]);
 
   const pauseTimer = useCallback(() => {
     if (status !== "running") return;
@@ -157,10 +185,10 @@ export default function ShutdownTimerPage() {
     setCommandError("");
     // Best-effort cancel any pending OS shutdown
     try {
-      const msg = await safeInvoke<string>("cancel_shutdown");
+      const msg = await safeInvoke<string>("cancel_power_action");
       console.log("[Shutdown] Cancel result:", msg);
     } catch (e) {
-      console.warn("[Shutdown] cancel_shutdown error (may be none pending):", e);
+      console.warn("[Shutdown] cancel_power_action error (may be none pending):", e);
     }
   }, [clearTick, stopWarningAudio]);
 
@@ -171,14 +199,23 @@ export default function ShutdownTimerPage() {
     setCommandMessage("");
     setCommandError("");
     try {
-      const result = await safeInvoke<string>("shutdown_after", { seconds: 0 });
+      const result = await safeInvoke<string>("execute_power_action", {
+        action,
+        seconds: 0,
+      });
       setCommandMessage(result);
       setStatus("finished");
     } catch (e: any) {
-      setCommandError(e?.message ?? "Shutdown command failed. Check permissions.");
-      setStatus("finished");
+      const errMsg = e?.message || String(e);
+      if (errMsg.includes("REQUIRES_ADMIN")) {
+        setShowAdminPromptModal(true);
+        setStatus("idle");
+      } else {
+        setCommandError(e?.message ?? `${action.charAt(0).toUpperCase() + action.slice(1)} command failed. Check permissions.`);
+        setStatus("finished");
+      }
     }
-  }, [clearTick, stopWarningAudio]);
+  }, [clearTick, stopWarningAudio, action]);
 
   // Ticking effect — only when "running"
   useEffect(() => {
@@ -218,18 +255,18 @@ export default function ShutdownTimerPage() {
         <CardHeader className="p-6 pb-0 shrink-0 text-center">
           <CardTitle className="text-2xl font-bold tracking-tight flex items-center justify-center gap-2">
             <Laptop className="w-6 h-6 text-(--accent-color)" />
-            Laptop Shutdown Timer
+            Laptop Power Timer
           </CardTitle>
           <CardDescription className="text-sm text-muted-foreground mt-1">
-            Configure a countdown to automatically shut down your computer.
+            Configure a countdown to automatically {action === "shutdown" ? "shut down" : action === "sleep" ? "suspend (sleep)" : action === "hibernate" ? "hibernate" : "restart"} your computer.
           </CardDescription>
         </CardHeader>
 
-        <CardContent className="p-6 pt-6 grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-12 items-center flex-1">
+        <CardContent className="p-6 pt-6 grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-12 items-center flex-1">
 
           {/* Left Column: Circular Progress Countdown */}
           <div className="flex flex-col items-center justify-center w-full min-h-0 py-2 md:py-6">
-            <div className="relative w-68 h-68 sm:w-72 sm:h-72 lg:w-80 lg:h-80 flex items-center justify-center aspect-square select-none max-w-full mx-auto">
+            <div className="relative w-full max-w-[240px] sm:max-w-[260px] md:max-w-[280px] lg:max-w-[300px] flex items-center justify-center aspect-square select-none mx-auto">
               <svg className="w-full h-full transform -rotate-90" viewBox={`0 0 ${viewSize} ${viewSize}`}>
                 <circle
                   className="fill-none stroke-muted"
@@ -253,19 +290,19 @@ export default function ShutdownTimerPage() {
                 {status === "triggering" ? (
                   <Loader2 className="w-10 h-10 text-(--accent-color) animate-spin" />
                 ) : (
-                  <span className={`text-4xl font-extrabold tracking-tight tabular-nums font-mono ${warningActive ? "text-amber-400" : "text-foreground"}`}>
+                  <span className={`text-3xl sm:text-4xl font-extrabold tracking-tight tabular-nums font-mono ${warningActive ? "text-amber-400" : "text-foreground"}`}>
                     {status === "idle"
                       ? formatTime(totalInputSecs)
                       : formatTime(timeLeft)}
                   </span>
                 )}
-                <span className={`text-xs font-semibold uppercase tracking-wider mt-2 flex items-center gap-1.5 ${warningActive ? "text-amber-400" : "text-muted-foreground"}`}>
+                <span className={`text-[10px] sm:text-xs font-semibold uppercase tracking-wider mt-2 flex items-center gap-1.5 ${warningActive ? "text-amber-400" : "text-muted-foreground"}`}>
                   <Hourglass className={`w-3.5 h-3.5 ${warningActive ? "text-amber-400" : "text-(--accent-color)"}`} />
                   {status === "idle" && "Set Countdown"}
                   {status === "running" && !warningActive && "Ticking"}
-                  {warningActive && `Warning: shutdown in ${timeLeft}s`}
+                  {warningActive && `Warning: ${action} in ${timeLeft}s`}
                   {status === "paused" && "Paused"}
-                  {status === "triggering" && "Shutting down..."}
+                  {status === "triggering" && `Executing ${action}...`}
                   {status === "finished" && "Completed"}
                 </span>
               </div>
@@ -276,6 +313,72 @@ export default function ShutdownTimerPage() {
           <div className="flex flex-col justify-center w-full gap-5 md:pr-2">
             {status === "idle" ? (
               <div className="flex flex-col gap-5">
+                {/* Action Type Dropdown */}
+                <div className="flex flex-col gap-2">
+                  <div className="flex justify-between items-center text-sm font-semibold text-muted-foreground">
+                    <span>Action Type</span>
+                  </div>
+                  <Select value={action} onValueChange={(val) => setAction(val as "shutdown" | "sleep" | "hibernate" | "restart")}>
+                    <SelectTrigger className="w-full font-semibold border-border bg-transparent text-foreground hover:bg-input/10 min-w-[120px]">
+                      <SelectValue placeholder="Select action" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover border-border text-foreground">
+                      <SelectItem value="shutdown" className="cursor-pointer">Shutdown</SelectItem>
+                      <SelectItem value="sleep" className="cursor-pointer">Sleep</SelectItem>
+                      <SelectItem value="hibernate" className="cursor-pointer">Hibernate</SelectItem>
+                      <SelectItem value="restart" className="cursor-pointer">Restart</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Stay Asleep For (Scheduled Wake Up) - Commented out as requested
+                {(action === "sleep" || action === "hibernate") && (
+                  <div className="flex flex-col gap-2 p-3 bg-muted/40 rounded-xl border border-border/60 animate-[fade-in_0.2s_ease-out]">
+                    <div className="flex justify-between items-center text-sm font-semibold text-muted-foreground">
+                      <span>Stay Asleep For (Scheduled Wake Up)</span>
+                      <span className="font-bold text-(--accent-color)">
+                        {sleepHours > 0 ? `${sleepHours}h ` : ""}{sleepMinutes}m {sleepSeconds}s
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 w-full mt-1">
+                      <div className="flex flex-col gap-1 text-center">
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Hours</span>
+                        <Input
+                          type="number"
+                          min={0}
+                          max={23}
+                          className="text-center font-semibold font-mono h-8 text-xs"
+                          value={sleepHours}
+                          onChange={(e) => setSleepHours(Math.max(0, Math.min(23, Number(e.target.value))))}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1 text-center">
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Minutes</span>
+                        <Input
+                          type="number"
+                          min={0}
+                          max={59}
+                          className="text-center font-semibold font-mono h-8 text-xs"
+                          value={sleepMinutes}
+                          onChange={(e) => setSleepMinutes(Math.max(0, Math.min(59, Number(e.target.value))))}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1 text-center">
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Seconds</span>
+                        <Input
+                          type="number"
+                          min={0}
+                          max={59}
+                          className="text-center font-semibold font-mono h-8 text-xs"
+                          value={sleepSeconds}
+                          onChange={(e) => setSleepSeconds(Math.max(0, Math.min(59, Number(e.target.value))))}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+                */}
+
                 {/* Quick Slider Setup */}
                 <div className="flex flex-col gap-2">
                   <div className="flex justify-between items-center text-sm font-semibold text-muted-foreground">
@@ -301,7 +404,7 @@ export default function ShutdownTimerPage() {
                       type="number"
                       min={0}
                       max={23}
-                      className="text-center font-semibold font-mono"
+                      className="text-center font-semibold font-mono min-w-[64px] sm:min-w-[72px]"
                       value={inputHours}
                       onChange={(e) => setInputHours(Math.max(0, Math.min(23, Number(e.target.value))))}
                     />
@@ -312,7 +415,7 @@ export default function ShutdownTimerPage() {
                       type="number"
                       min={0}
                       max={59}
-                      className="text-center font-semibold font-mono"
+                      className="text-center font-semibold font-mono min-w-[64px] sm:min-w-[72px]"
                       value={inputMinutes}
                       onChange={(e) => setInputMinutes(Math.max(0, Math.min(59, Number(e.target.value))))}
                     />
@@ -323,7 +426,7 @@ export default function ShutdownTimerPage() {
                       type="number"
                       min={0}
                       max={59}
-                      className="text-center font-semibold font-mono"
+                      className="text-center font-semibold font-mono min-w-[64px] sm:min-w-[72px]"
                       value={inputSeconds}
                       onChange={(e) => setInputSeconds(Math.max(0, Math.min(59, Number(e.target.value))))}
                     />
@@ -347,7 +450,7 @@ export default function ShutdownTimerPage() {
                     <AlertTriangle className="mt-0.5 w-4 h-4 shrink-0 text-amber-400" />
                     <div className="flex flex-col gap-0.5">
                       <span className="font-bold uppercase tracking-wider text-[11px]">Final warning</span>
-                      <span className="text-xs text-amber-100/90">Shutdown will execute when the timer reaches zero.</span>
+                      <span className="text-xs text-amber-100/90">{action.charAt(0).toUpperCase() + action.slice(1)} will execute when the timer reaches zero.</span>
                     </div>
                   </div>
                 )}
@@ -376,7 +479,7 @@ export default function ShutdownTimerPage() {
                 {status === "triggering" && (
                   <div className="text-center text-xs font-semibold text-muted-foreground flex items-center gap-1.5 justify-center animate-pulse">
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    Sending shutdown command to OS...
+                    Sending command to OS...
                   </div>
                 )}
 
@@ -399,6 +502,54 @@ export default function ShutdownTimerPage() {
 
         </CardContent>
       </Card>
+
+      {/* Admin Elevation Prompt Modal */}
+      {showAdminPromptModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <Card className="w-full max-w-md bg-card border border-border shadow-2xl rounded-2xl p-6 animate-[fade-in_0.15s_ease-out]">
+            <CardHeader className="p-0 pb-3 flex flex-row items-center gap-3">
+              <div className="p-2 rounded-lg bg-red-500/10 text-red-500">
+                <Shield className="w-5.5 h-5.5" />
+              </div>
+              <CardTitle className="text-lg font-bold">Administrator Rights Required</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0 flex flex-col gap-4">
+              <p className="text-sm text-(--text-primary) font-medium leading-relaxed">
+                Putting the system to sleep requires Administrator privileges to temporarily toggle Windows hibernation settings (ensuring actual sleep instead of hibernation).
+              </p>
+              <p className="text-xs text-(--text-secondary) opacity-80 leading-relaxed">
+                Would you like to relaunch the application as Administrator to proceed?
+              </p>
+              <div className="flex gap-2 justify-end pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowAdminPromptModal(false)}
+                  className="font-bold text-xs"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={async () => {
+                    setShowAdminPromptModal(false);
+                    try {
+                      if ((window as any).__TAURI_INTERNALS__) {
+                        await invoke("relaunch_as_admin");
+                      } else {
+                        console.log("Mock relaunch as admin");
+                      }
+                    } catch (err) {
+                      console.error("Failed to relaunch as admin:", err);
+                    }
+                  }}
+                  className="font-bold text-xs bg-red-600 hover:bg-red-700 text-white border-0"
+                >
+                  Relaunch as Admin
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

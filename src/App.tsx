@@ -300,7 +300,7 @@ export default function AppLayout() {
   }, [enabledFeatures]);
 
   return (
-    <div className="flex h-screen w-screen bg-(--bg-primary) overflow-hidden select-none">
+    <div className="flex h-screen w-screen min-w-[800px] min-h-[600px] bg-(--bg-primary) overflow-x-auto overflow-y-auto select-none">
       {/* Custom Global Tooltip */}
       {isCollapsed && hoveredLabel && hoveredCoords && (
         <div
@@ -507,21 +507,20 @@ export default function AppLayout() {
                         <SelectItem
                           key={preset.id}
                           value={preset.id}
-                          className="text-xs font-semibold cursor-pointer data-highlighted:text-slate-950 dark:data-highlighted:text-slate-950"
+                          className="text-xs font-semibold cursor-pointer"
                         >
                           <div className="flex items-center justify-between gap-4 w-full min-w-37.5">
-                            {/* Force a highly readable text color shift on hover/highlight */}
-                            <span className="data-highlighted:text-slate-950 mix-blend-difference invert dark:invert-0 font-bold">
+                            <span className="font-bold">
                               {preset.name}
                             </span>
-                            <div className="flex gap-1 border border-black/40 dark:border-white/40 rounded p-0.5 bg-black/40 dark:bg-black/60 shrink-0 shadow-md">
+                            <div className="flex gap-1 rounded p-0.5 bg-black/40 dark:bg-black/60 shrink-0 shadow-md">
                               {colors.map((c, idx) => (
                                 <div
                                   key={idx}
                                   style={{
                                     backgroundColor: c,
                                   }}
-                                  className="w-2.5 h-2.5 rounded-full ring-1 ring-white/90 dark:ring-white/50 border border-black/20"
+                                  className="w-2.5 h-2.5 rounded-full"
                                 />
                               ))}
                             </div>

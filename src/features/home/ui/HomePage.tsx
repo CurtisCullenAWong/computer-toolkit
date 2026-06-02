@@ -30,13 +30,20 @@ const safeInvoke = async <T,>(cmd: string, args?: Record<string, any>): Promise<
       console.warn(`[Tauri Mock] invoke("${cmd}") called in browser with args:`, args);
       // Minimal delay to simulate IPC roundtrip (no artificial loading inflation)
       await new Promise((resolve) => setTimeout(resolve, 120));
+      if (cmd === "is_admin") {
+        return true as T;
+      }
+      if (cmd === "relaunch_as_admin") {
+        console.log("Relaunching as admin mock executed");
+        return null as T;
+      }
       if (cmd === "toggle_gpu") {
         return (args?.enable
           ? "Dedicated GPU has been enabled successfully."
           : "Dedicated GPU has been disabled successfully.") as T;
       }
       if (cmd === "detect_gpu") {
-        return "NVIDIA GeForce RTX 3060 Laptop GPU (Mock)" as T;
+        return "none" as T;
       }
       if (cmd === "get_gpu_preference") {
         return false as T;
@@ -68,6 +75,8 @@ const safeInvoke = async <T,>(cmd: string, args?: Record<string, any>): Promise<
 export default function HomePage() {
   const navigate = useNavigate();
 
+
+
   // GPU state — initialized from registry (not localStorage) via get_gpu_preference
   const [gpuEnabled, setGpuEnabled] = useState(false);
   const [gpuLoading, setGpuLoading] = useState(true); // start true: loading from registry
@@ -78,6 +87,7 @@ export default function HomePage() {
   // Confirmation Modal state
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [pendingGpuState, setPendingGpuState] = useState(false);
+  const [showAdminPromptModal, setShowAdminPromptModal] = useState(false);
 
   // Autostart state
   const [autostartEnabled, setAutostartEnabled] = useState(false);
@@ -93,6 +103,8 @@ export default function HomePage() {
   const [activeAlarmsCount, setActiveAlarmsCount] = useState(0);
 
   useEffect(() => {
+
+
     // 1. Detect GPU hardware
     const runGpuDetection = async () => {
       try {
@@ -152,6 +164,7 @@ export default function HomePage() {
       }
     }
 
+
     runGpuDetection();
     runGpuPreferenceCheck();
     runAutostartCheck();
@@ -202,8 +215,13 @@ export default function HomePage() {
     try {
       await safeInvoke<string>("toggle_gpu", { enable: pendingGpuState });
       setGpuEnabled(pendingGpuState);
-    } catch {
-      setGpuMessage("Error: Failed to toggle GPU device state.");
+    } catch (err: any) {
+      const errMsg = err?.message || String(err);
+      if (errMsg.includes("REQUIRES_ADMIN")) {
+        setShowAdminPromptModal(true);
+      } else {
+        setGpuMessage("Error: Failed to toggle GPU device state.");
+      }
     } finally {
       setGpuLoading(false);
     }
@@ -213,28 +231,82 @@ export default function HomePage() {
     setShowConfirmModal(false);
   }, []);
 
+  const handleGpuSwitchChange = useCallback((checked: boolean) => {
+    triggerGpuToggle(checked);
+  }, [triggerGpuToggle]);
+
   return (
     <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-4 select-none overflow-y-auto pr-2 pb-5 xl:grid-cols-3">
+      {/* Admin Elevation Prompt Modal */}
+      {showAdminPromptModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <Card className="w-full max-w-md bg-card border border-border shadow-2xl rounded-2xl p-6 animate-[fade-in_0.15s_ease-out]">
+            <CardHeader className="p-0 pb-3 flex flex-row items-center gap-3">
+              <div className="p-2 rounded-lg bg-red-500/10 text-red-500">
+                <Shield className="w-5.5 h-5.5" />
+              </div>
+              <CardTitle className="text-lg font-bold">Administrator Rights Required</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0 flex flex-col gap-4">
+              <p className="text-sm text-(--text-primary) font-medium leading-relaxed">
+                Toggling the dedicated GPU requires Administrator privileges to enable/disable the device driver.
+              </p>
+              <p className="text-xs text-(--text-secondary) opacity-80 leading-relaxed">
+                Would you like to relaunch the application as Administrator to proceed with this action?
+              </p>
+              <div className="flex gap-2 justify-end pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowAdminPromptModal(false)}
+                  className="font-bold text-xs"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={async () => {
+                    setShowAdminPromptModal(false);
+                    try {
+                      await safeInvoke("relaunch_as_admin");
+                    } catch (err) {
+                      console.error("Failed to relaunch as admin:", err);
+                    }
+                  }}
+                  className="font-bold text-xs bg-red-600 hover:bg-red-700 text-white border-0"
+                >
+                  Relaunch as Admin
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* GPU Toggler Confirmation Modal */}
       {showConfirmModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <Card className="w-full max-w-md bg-card border border-border shadow-2xl rounded-2xl p-6 animate-[fade-in_0.15s_ease-out]">
             <CardHeader className="p-0 pb-3 flex flex-row items-center gap-3">
               <div className="p-2 rounded-lg bg-amber-500/10 text-amber-500">
-                <AlertTriangle className="w-5 h-5" />
+                <AlertTriangle className="w-5.5 h-5.5" />
               </div>
-              <CardTitle className="text-base font-bold">Confirm GPU Toggle</CardTitle>
+              <CardTitle className="text-lg font-bold">Confirm GPU Toggle</CardTitle>
             </CardHeader>
-            <CardContent className="p-0 flex flex-col gap-5">
-              <p className="text-xs text-(--text-secondary) leading-relaxed">
+            <CardContent className="p-0 flex flex-col gap-4">
+              <p className="text-sm text-(--text-primary) font-medium leading-relaxed">
                 {pendingGpuState
-                  ? "Enable the dedicated GPU device for high-performance tasks?"
-                  : "Disable the dedicated GPU device to conserve power?"}
+                  ? "Are you sure you want to enable the dedicated GPU device?"
+                  : "Are you sure you want to disable the dedicated GPU device?"}
               </p>
-              <p className="text-[10px] text-(--text-secondary) opacity-70 leading-relaxed">
+              <div className="text-xs bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 p-3 rounded-lg leading-relaxed flex flex-col gap-1.5">
+                <span className="font-bold text-amber-700 dark:text-amber-300">Safety Warning:</span>
+                <span>
+                  Please be absolutely sure of what you are doing. Verify whether your hardware has a MUX switch (hardware GPU switcher); toggling this device on certain hardware can cause a permanent black screen or system instability.
+                </span>
+              </div>
+              <p className="text-xs text-(--text-secondary) opacity-80 leading-relaxed">
                 The switch takes effect immediately. A brief screen flicker may occur.
               </p>
-              <div className="flex gap-2 justify-end">
+              <div className="flex gap-2 justify-end pt-2">
                 <Button
                   variant="outline"
                   onClick={cancelGpuToggle}
@@ -302,7 +374,7 @@ export default function HomePage() {
                 <Switch
                   checked={gpuEnabled}
                   disabled={gpuLoading || !isGpuDetected}
-                  onCheckedChange={triggerGpuToggle}
+                  onCheckedChange={handleGpuSwitchChange}
                 />
               </div>
             </div>
@@ -430,7 +502,7 @@ export default function HomePage() {
               <ChevronRight className="w-4 h-4 text-(--text-secondary) opacity-50 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
             </button>
 
-            {/* Shutdown Timer shortcut */}
+            {/* Power Timer shortcut */}
             <button
               onClick={() => navigate("/shutdown-timer")}
               className="w-full flex items-center justify-between p-3 rounded-xl border border-(--border-color) bg-(--bg-primary) hover:bg-(--bg-sidebar-hover) transition-all text-left cursor-pointer group min-h-18"
@@ -440,7 +512,7 @@ export default function HomePage() {
                   <Shield className="w-4 h-4" />
                 </div>
                 <div>
-                  <h4 className="text-xs font-bold text-(--text-primary)">Shutdown Timer</h4>
+                  <h4 className="text-xs font-bold text-(--text-primary)">Power Timer</h4>
                   <p className="text-[10px] text-(--text-secondary)">Countdown sleep utilities</p>
                 </div>
               </div>

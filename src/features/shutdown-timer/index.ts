@@ -2,8 +2,8 @@ import ShutdownTimerPage from "./ui/ShutdownTimerPage";
 
 export const ShutdownTimerFeature = {
     id: "shutdown-timer",
-    name: "Shutdown Timer",
-    description: "Shutdown your PC after a countdown",
+    name: "Power Timer",
+    description: "Shutdown, sleep, or restart your PC after a countdown",
     icon: "power",
 
     routes: [

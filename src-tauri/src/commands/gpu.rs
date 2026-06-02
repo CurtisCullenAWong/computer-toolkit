@@ -47,6 +47,10 @@ pub async fn toggle_gpu(enable: bool) -> Result<String, String> {
 
     #[cfg(target_os = "windows")]
     {
+        if !crate::is_running_as_admin() {
+            return Err("REQUIRES_ADMIN".to_string());
+        }
+
         // Toggle the dedicated GPU device (enable/disable) via pnputil command.
 
         let device_id = get_nvidia_device_id()?;

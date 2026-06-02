@@ -505,17 +505,17 @@ export default function AlarmClockPage() {
           <CardContent className="p-5 sm:p-6 pt-5 flex flex-col gap-5 flex-1 justify-between">
 
             <div className="flex flex-col gap-4">
-              <div className="grid grid-cols-1 sm:grid-cols-[1.15fr_0.85fr] gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-[1.15fr_0.85fr] gap-4">
 
                 {/* Time input */}
                 <div className="flex flex-col gap-2">
                   <label className="text-xs font-bold text-muted-foreground">Time (12h)</label>
                   <div className="flex w-full flex-col gap-2 bg-(--bg-primary) px-2.5 py-2 sm:px-3 rounded-xl border border-(--border-color)">
-                    <div className="grid grid-cols-[minmax(2.5rem,1fr)_auto_minmax(2.5rem,1fr)] items-center gap-1.5 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto]">
+                    <div className="grid grid-cols-[minmax(3rem,1fr)_auto_minmax(3rem,1fr)] items-center gap-1.5 lg:grid-cols-[minmax(3.5rem,1fr)_auto_minmax(3.5rem,1fr)_auto]">
                       <select
                         value={newAlarmHour}
                         onChange={(e) => { setNewAlarmHour(Number(e.target.value)); setError(null); }}
-                        className="min-w-0 w-full bg-transparent text-sm font-bold font-mono focus:outline-none cursor-pointer text-center py-1 text-foreground appearance-none"
+                        className="min-w-[48px] w-full bg-transparent text-sm font-bold font-mono focus:outline-none cursor-pointer text-center py-1 text-foreground appearance-none"
                       >
                         {Array.from({ length: 12 }, (_, i) => i + 1).map((h) => (
                           <option key={h} value={h} className="bg-popover text-foreground">{String(h).padStart(2, "0")}</option>
@@ -525,13 +525,13 @@ export default function AlarmClockPage() {
                       <select
                         value={newAlarmMinute}
                         onChange={(e) => { setNewAlarmMinute(Number(e.target.value)); setError(null); }}
-                        className="min-w-0 w-full bg-transparent text-sm font-bold font-mono focus:outline-none cursor-pointer text-center py-1 text-foreground appearance-none"
+                        className="min-w-[48px] w-full bg-transparent text-sm font-bold font-mono focus:outline-none cursor-pointer text-center py-1 text-foreground appearance-none"
                       >
                         {Array.from({ length: 60 }, (_, i) => i).map((m) => (
                           <option key={m} value={m} className="bg-popover text-foreground">{String(m).padStart(2, "0")}</option>
                         ))}
                       </select>
-                      <div className="hidden sm:grid grid-cols-2 w-21 bg-(--bg-sidebar-hover) rounded-lg p-0.5 border border-border/10 shrink-0 select-none">
+                      <div className="hidden lg:grid grid-cols-2 w-21 bg-(--bg-sidebar-hover) rounded-lg p-0.5 border border-border/10 shrink-0 select-none">
                         <button
                           type="button"
                           onClick={() => { setNewAlarmPeriod("AM"); setError(null); }}
@@ -553,7 +553,7 @@ export default function AlarmClockPage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 sm:hidden w-full bg-(--bg-sidebar-hover) rounded-lg p-0.5 border border-border/10 shrink-0 select-none">
+                    <div className="grid grid-cols-2 lg:hidden w-full bg-(--bg-sidebar-hover) rounded-lg p-0.5 border border-border/10 shrink-0 select-none">
                       <button
                         type="button"
                         onClick={() => { setNewAlarmPeriod("AM"); setError(null); }}
@@ -582,7 +582,7 @@ export default function AlarmClockPage() {
                   <Input
                     type="text"
                     placeholder="Wake up!"
-                    className="font-medium h-10.5 rounded-xl"
+                    className="font-medium h-10.5 rounded-xl min-w-[120px]"
                     value={newAlarmLabel}
                     onChange={(e) => setNewAlarmLabel(e.target.value)}
                   />
@@ -592,7 +592,7 @@ export default function AlarmClockPage() {
               {/* Preset Times */}
               <div className="flex flex-col gap-2.5 mt-2">
                 <label className="text-xs font-bold text-muted-foreground">Preset Times</label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-1.5">
                   {PRESET_TIMES_12H.map((preset, idx) => {
                     const presetTime24h = format12hTo24h(preset.hour, preset.minute, preset.period);
                     const currentInput24h = format12hTo24h(newAlarmHour, newAlarmMinute, newAlarmPeriod);
@@ -635,7 +635,7 @@ export default function AlarmClockPage() {
               <div className="flex flex-col gap-2 mt-2">
                 <label className="text-xs font-bold text-muted-foreground">Alarm Sound</label>
                 <Select value={selectedSoundId} onValueChange={setSelectedSoundId}>
-                  <SelectTrigger className="w-full font-semibold h-10.5 rounded-xl border-border">
+                  <SelectTrigger className="w-full font-semibold h-10.5 rounded-xl border-border min-w-[140px]">
                     <SelectValue placeholder="Select sound" />
                   </SelectTrigger>
                   <SelectContent className="bg-popover text-foreground">
