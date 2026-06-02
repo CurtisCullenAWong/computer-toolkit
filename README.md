@@ -60,7 +60,7 @@ Follow these steps to set up the development environment on your machine:
 4. **Build for Production**
    To generate the production build for deployment:
    ```bash
-   npm run build
+   npm run tauri build
    ```
 
 ## Usage
