@@ -1,0 +1,486 @@
+/* App.css - Clean, premium, and vibrant CSS styling with light/dark theme support */
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/geist";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  --font-mono: "Fira Code", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+:root {
+  /* Color Palette (Default Light Theme - Premium Off-White Alabaster) */
+  --bg-primary: #faf9f5;
+  --bg-secondary: #ffffff;
+  --bg-sidebar: #f3f2eb;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-sidebar: #475569;
+  --text-sidebar-active: #ffffff;
+  --text-sidebar-title: #0f172a;
+  --bg-sidebar-hover: rgba(0, 0, 0, 0.05);
+  --bg-select-trigger: rgba(0, 0, 0, 0.05);
+  --bg-select-trigger-hover: rgba(0, 0, 0, 0.08);
+  --text-select-trigger: #0f172a;
+  --theme-btn-active-bg: var(--accent-color);
+  --theme-btn-active-text: #ffffff;
+  --accent-color: #6366f1;
+  --accent-hover: #4f46e5;
+  --accent-light: #e0e7ff;
+  --border-color: #e6e4dc;
+  --danger-color: #ef4444;
+  --danger-hover: #dc2626;
+  --success-color: #22c55e;
+  --card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+  --font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --background: var(--bg-primary);
+  --foreground: oklch(0.145 0 0);
+  --card: var(--bg-secondary);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: var(--bg-secondary);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: var(--accent-color);
+  --primary-foreground: #ffffff;
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: var(--accent-light);
+  --accent-foreground: var(--accent-color);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: var(--border-color);
+  --input: var(--border-color);
+  --ring: var(--accent-color);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: var(--bg-sidebar);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: var(--accent-color);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: var(--accent-light);
+  --sidebar-accent-foreground: var(--accent-color);
+  --sidebar-border: var(--border-color);
+  --sidebar-ring: var(--accent-color);
+}
+
+/* Dark Theme Variables */
+.dark {
+  --bg-primary: #0b0f19;
+  --bg-secondary: #131c2e;
+  --bg-sidebar: #070a13;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-sidebar: #94a3b8;
+  --text-sidebar-active: #ffffff;
+  --text-sidebar-title: #ffffff;
+  --bg-sidebar-hover: rgba(255, 255, 255, 0.05);
+  --bg-select-trigger: rgba(255, 255, 255, 0.08);
+  --bg-select-trigger-hover: rgba(255, 255, 255, 0.12);
+  --text-select-trigger: #ffffff;
+  --theme-btn-active-bg: #ffffff;
+  --theme-btn-active-text: #0f172a;
+  --accent-light: #1e1b4b;
+  --card-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3), 0 4px 6px -4px rgb(0 0 0 / 0.3);
+  --background: var(--bg-primary);
+  --foreground: oklch(0.985 0 0);
+  --card: var(--bg-secondary);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: var(--bg-secondary);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: var(--accent-color);
+  --primary-foreground: #0b0f19;
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: var(--accent-light);
+  --accent-foreground: var(--accent-color);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: var(--border-color);
+  --input: var(--border-color);
+  --ring: var(--accent-color);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: var(--bg-sidebar);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: var(--accent-color);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: var(--accent-light);
+  --sidebar-accent-foreground: var(--accent-color);
+  --sidebar-border: var(--border-color);
+  --sidebar-ring: var(--accent-color);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    margin: 0;
+    font-family: var(--font-family);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+/* Scrollbar Customization */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-color);
+}
+
+/* Hide default number input spinners for a cleaner, professional look */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield; /* Firefox support */
+}
+
+/* Fullscreen Alarm Trigger Overlay (Uses custom keyframes) */
+.alarm-trigger-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: var(--danger-color);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  z-index: 9999;
+  animation: pulse-danger 1.5s infinite;
+  text-align: center;
+  padding: 24px;
+}
+
+.alarm-trigger-title {
+  font-size: 4rem;
+  font-weight: 900;
+  letter-spacing: -0.05em;
+  margin-bottom: 12px;
+  animation: shake 0.5s infinite;
+  will-change: transform; /* GPU compositing hint for shake animation */
+}
+
+.alarm-trigger-message {
+  font-size: 1.5rem;
+  margin-bottom: 40px;
+  opacity: 0.9;
+  font-weight: 500;
+  max-width: 600px;
+}
+
+.alarm-dismiss-btn {
+  background-color: #ffffff;
+  color: var(--danger-color);
+  font-size: 1.25rem;
+  font-weight: 800;
+  padding: 18px 48px;
+  border-radius: 50px;
+  border: none;
+  cursor: pointer;
+  transition: var(--transition);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.alarm-dismiss-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+}
+
+@keyframes pulse-danger {
+  0% { background-color: #ef4444; }
+  50% { background-color: #b91c1c; }
+  100% { background-color: #ef4444; }
+}
+
+@keyframes shake {
+  0% { transform: translate(1px, 1px) rotate(0deg); }
+  10% { transform: translate(-1px, -2px) rotate(-1deg); }
+  20% { transform: translate(-3px, 0px) rotate(1deg); }
+  30% { transform: translate(0px, 2px) rotate(0deg); }
+  40% { transform: translate(1px, -1px) rotate(1deg); }
+  55% { transform: translate(-1px, 2px) rotate(-1deg); }
+  65% { transform: translate(-3px, 1px) rotate(0deg); }
+  75% { transform: translate(2px, 1px) rotate(-1deg); }
+  85% { transform: translate(-1px, -1px) rotate(1deg); }
+  95% { transform: translate(2px, 2px) rotate(0deg); }
+  100% { transform: translate(1px, -2px) rotate(-1deg); }
+}
+
+/* Color Presets */
+
+/* Warm Amber — earthy warm tones, muted clay backgrounds */
+.theme-indigo {
+  --accent-color: #d97706;
+  --secondary-color: #b45309;
+  --bg-primary: #f9f8f3;
+  --bg-secondary: #ffffff;
+  --bg-sidebar: #f3f1e8;
+  --border-color: #e5e2d5;
+}
+.dark.theme-indigo {
+  --accent-color: #f59e0b;
+  --secondary-color: #d97706;
+  --bg-primary: #1a1612;
+  --bg-secondary: #231e18;
+  --bg-sidebar: #100e0b;
+  --border-color: #2e2820;
+  --accent-light: #3d2d0a;
+}
+
+/* Steel Slate — cool grey-blue, clean and structured */
+.theme-emerald {
+  --accent-color: #3b82f6;
+  --secondary-color: #6366f1;
+  --bg-primary: #fafaf7;
+  --bg-secondary: #ffffff;
+  --bg-sidebar: #f3f3ee;
+  --border-color: #e4e4dc;
+}
+.dark.theme-emerald {
+  --accent-color: #60a5fa;
+  --secondary-color: #818cf8;
+  --bg-primary: #12151c;
+  --bg-secondary: #1a1f2b;
+  --bg-sidebar: #0b0e14;
+  --border-color: #252b38;
+  --accent-light: #1e2d4a;
+}
+
+/* Deep Teal — rich dark greens with vibrant teal accent */
+.theme-rose {
+  --accent-color: #0d9488;
+  --secondary-color: #059669;
+  --bg-primary: #fafbf9;
+  --bg-secondary: #ffffff;
+  --bg-sidebar: #f3f5f1;
+  --border-color: #e3e7e0;
+}
+.dark.theme-rose {
+  --accent-color: #14b8a6;
+  --secondary-color: #10b981;
+  --bg-primary: #0d1412;
+  --bg-secondary: #141e1c;
+  --bg-sidebar: #080e0c;
+  --border-color: #1d2d2a;
+  --accent-light: #0a2e29;
+}
+
+/* Soft Coral — warm peachy-red with gentle light backgrounds */
+.theme-ocean {
+  --accent-color: #e55c3f;
+  --secondary-color: #d97706;
+  --bg-primary: #fbf9f6;
+  --bg-secondary: #ffffff;
+  --bg-sidebar: #f4f0ea;
+  --border-color: #e7dfd5;
+}
+.dark.theme-ocean {
+  --accent-color: #f87060;
+  --secondary-color: #fb923c;
+  --bg-primary: #171210;
+  --bg-secondary: #201917;
+  --bg-sidebar: #0f0c0a;
+  --border-color: #2e201c;
+  --accent-light: #3d1610;
+}
+
+/* Rich Plum — deep purple with electric violet accent */
+.theme-violet {
+  --accent-color: #7c3aed;
+  --secondary-color: #6d28d9;
+  --bg-primary: #faf9fb;
+  --bg-secondary: #ffffff;
+  --bg-sidebar: #f4f1f6;
+  --border-color: #e7e1eb;
+}
+.dark.theme-violet {
+  --accent-color: #a78bfa;
+  --secondary-color: #818cf8;
+  --bg-primary: #100e18;
+  --bg-secondary: #181422;
+  --bg-sidebar: #09070f;
+  --border-color: #221d32;
+  --accent-light: #2a1a4a;
+}
+
+/* Collapsible Sidebar Animations & Utilities */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translate(0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translate(0, 0);
+  }
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 999px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-color);
+}
+
+/* ─────────────────────────────────────────────────────────
+   Premium Options Dropdown Styling
+   Targets the Radix SelectContent portal overlay
+   ───────────────────────────────────────────────────────── */
+
+/* Dropdown container */
+[data-slot="select-content"] {
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 14px !important;
+  box-shadow:
+    0 8px 32px -4px rgba(0, 0, 0, 0.18),
+    0 2px 8px -2px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+  backdrop-filter: blur(20px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(160%) !important;
+  padding: 6px !important;
+  overflow: hidden !important;
+  animation: dropdown-in 0.15s cubic-bezier(0.16, 1, 0.3, 1) both !important;
+}
+
+/* Dropdown item */
+[data-slot="select-item"] {
+  border-radius: 9px !important;
+  padding: 9px 36px 9px 12px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: var(--text-primary) !important;
+  transition: background 0.12s ease, color 0.12s ease !important;
+  cursor: pointer !important;
+  position: relative !important;
+  margin: 1px 0 !important;
+}
+
+[data-slot="select-item"]:focus,
+[data-slot="select-item"][data-highlighted] {
+  background: var(--accent-color) !important;
+  color: #ffffff !important;
+  outline: none !important;
+}
+
+/* Checkmark indicator */
+[data-slot="select-item"] [data-slot="select-item-indicator"],
+[data-slot="select-item"] > span:first-child {
+  right: 10px !important;
+  color: inherit !important;
+}
+
+[data-slot="select-item"][data-highlighted] svg,
+[data-slot="select-item"]:focus svg {
+  color: #ffffff !important;
+}
+
+/* Scroll buttons */
+[data-slot="select-scroll-up-button"],
+[data-slot="select-scroll-down-button"] {
+  background: var(--bg-secondary) !important;
+  color: var(--text-secondary) !important;
+}
+
+/* Viewport padding */
+[data-slot="select-content"] [data-radix-select-viewport] {
+  padding: 0 !important;
+}
+
+@keyframes dropdown-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* SelectTrigger — refined pill-style trigger button */
+[data-slot="select-trigger"] {
+  border-radius: 10px !important;
+  border-color: var(--border-color) !important;
+  background: var(--bg-select-trigger) !important;
+  color: var(--text-select-trigger) !important;
+  font-weight: 600 !important;
+  font-size: 12px !important;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+[data-slot="select-trigger"]:hover {
+  background: var(--bg-select-trigger-hover) !important;
+  border-color: var(--accent-color) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-color) 15%, transparent) !important;
+}
+
+[data-slot="select-trigger"][data-state="open"] {
+  border-color: var(--accent-color) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-color) 18%, transparent) !important;
+}
