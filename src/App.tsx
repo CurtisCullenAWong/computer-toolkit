@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/select";
 
 type Theme = "light" | "dark" | "system";
-type ThemeColor = "indigo" | "emerald" | "rose" | "ocean" | "violet";
+type ThemeColor = "blush" | "indigo" | "emerald" | "rose" | "ocean" | "violet";
 
 interface PresetPalette {
   id: ThemeColor;
@@ -34,6 +34,7 @@ interface PresetPalette {
 }
 
 const PRESET_PALETTES: PresetPalette[] = [
+  { id: "blush", name: "Blush Rose" },
   { id: "indigo", name: "Warm Amber" },
   { id: "emerald", name: "Steel Slate" },
   { id: "rose", name: "Deep Teal" },
@@ -44,6 +45,10 @@ const PRESET_PALETTES: PresetPalette[] = [
 // Pure function — no component closure deps, defined outside to avoid re-creation
 const getPresetColors = (id: ThemeColor, dark: boolean): string[] => {
   switch (id) {
+    case "blush":
+      return dark
+        ? ["#BE6A71", "#9F5157", "#1a0f0f", "#241918"]
+        : ["#BE6A71", "#9F5157", "#fdecec", "#f9efef"];
     case "indigo":
       return dark
         ? ["#f59e0b", "#d97706", "#1a1612", "#231e18"]
@@ -95,7 +100,7 @@ export default function AppLayout() {
   });
 
   const [themeColor, setThemeColor] = useState<ThemeColor>(() => {
-    return (localStorage.getItem("themeColor") as ThemeColor) || "indigo";
+    return (localStorage.getItem("themeColor") as ThemeColor) || "blush";
   });
 
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
