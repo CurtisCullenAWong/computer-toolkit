@@ -61,7 +61,9 @@ export default function ShutdownTimerPage() {
   const warningSecondRef = useRef<number | null>(null);
 
   // SVG circular progress — derived values
-  const radius = 95;
+  const viewSize = 280;
+  const center = viewSize / 2;
+  const radius = 112;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset =
     totalDuration > 0
@@ -227,21 +229,21 @@ export default function ShutdownTimerPage() {
 
           {/* Left Column: Circular Progress Countdown */}
           <div className="flex flex-col items-center justify-center w-full min-h-0 py-2 md:py-6">
-            <div className="relative w-60 h-60 flex items-center justify-center aspect-square select-none max-w-full mx-auto">
-              <svg className="w-full h-full transform -rotate-90" viewBox="0 0 240 240">
+            <div className="relative w-68 h-68 sm:w-72 sm:h-72 lg:w-80 lg:h-80 flex items-center justify-center aspect-square select-none max-w-full mx-auto">
+              <svg className="w-full h-full transform -rotate-90" viewBox={`0 0 ${viewSize} ${viewSize}`}>
                 <circle
                   className="fill-none stroke-muted"
                   strokeWidth="4.5"
-                  cx="120"
-                  cy="120"
+                  cx={center}
+                  cy={center}
                   r={radius}
                 />
                 <circle
                   className={`fill-none transition-all duration-1000 ease-linear ${warningActive ? "stroke-amber-400" : "stroke-primary"}`}
                   strokeWidth="4.5"
                   strokeLinecap="round"
-                  cx="120"
-                  cy="120"
+                  cx={center}
+                  cy={center}
                   r={radius}
                   strokeDasharray={circumference}
                   strokeDashoffset={strokeDashoffset}

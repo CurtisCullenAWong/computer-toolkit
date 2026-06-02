@@ -346,7 +346,7 @@ export default function AppLayout() {
         className={`${isCollapsed ? "w-19" : "w-65"
           } bg-(--bg-sidebar) text-(--text-sidebar) flex flex-col justify-between border-r border-(--border-color) p-4 shrink-0 transition-all duration-300 ease-in-out relative`}
       >
-        <div className="flex flex-col gap-6 overflow-y-auto overflow-x-hidden flex-1 scrollbar-thin">
+        <div className="flex flex-col gap-6 overflow-y-auto overflow-x-hidden flex-1 min-h-0 sidebar-scrollbar">
           {/* Header & Logo */}
           <div className="flex items-center justify-between min-h-10 mb-2">
             {!isCollapsed ? (

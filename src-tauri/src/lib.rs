@@ -1,10 +1,48 @@
 mod commands;
 
+use std::fs;
+use std::path::PathBuf;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{TrayIconBuilder, TrayIconEvent},
     Manager, WindowEvent,
 };
+
+fn get_lock_file_path() -> PathBuf {
+    let app_data = std::env::var("APPDATA")
+        .or_else(|_| std::env::var("HOME"))
+        .unwrap_or_else(|_| ".".to_string());
+    PathBuf::from(app_data)
+        .join("ComputerToolkit")
+        .join("instance.lock")
+}
+
+fn try_acquire_lock() -> bool {
+    let lock_path = get_lock_file_path();
+    
+    // Create directory if it doesn't exist
+    if let Some(parent) = lock_path.parent() {
+        let _ = fs::create_dir_all(parent);
+    }
+    
+    // Try to create the lock file with exclusive access
+    match fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&lock_path)
+    {
+        Ok(_) => {
+            // Store lock file path for cleanup on exit
+            true
+        }
+        Err(_) => false,
+    }
+}
+
+fn release_lock() {
+    let lock_path = get_lock_file_path();
+    let _ = fs::remove_file(lock_path);
+}
 
 #[cfg(target_os = "windows")]
 fn is_running_as_admin() -> bool {
@@ -50,6 +88,20 @@ fn is_running_as_admin() -> bool {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Check if another instance is already running
+    if !try_acquire_lock() {
+        // Another instance is already running, try to communicate with it
+        eprintln!("An instance of Computer Toolkit is already running.");
+        // Create a signal file to tell the running instance to show itself
+        let signal_path = get_lock_file_path()
+            .parent()
+            .map(|p| p.join("show_window.signal"))
+            .unwrap_or_default();
+        let _ = fs::write(&signal_path, "");
+        // Exit this instance
+        std::process::exit(0);
+    }
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
@@ -121,6 +173,30 @@ pub fn run() {
                     let _ = window.hide();
                 }
             }
+
+            // Start watching for signal file to show window
+            let app_handle = app.handle().clone();
+            std::thread::spawn(move || {
+                let signal_path = get_lock_file_path()
+                    .parent()
+                    .map(|p| p.join("show_window.signal"))
+                    .unwrap_or_default();
+                
+                loop {
+                    if signal_path.exists() {
+                        // Signal received - show the window
+                        if let Some(window) = app_handle.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.unminimize();
+                            let _ = window.set_focus();
+                        }
+                        // Remove the signal file
+                        let _ = fs::remove_file(&signal_path);
+                    }
+                    std::thread::sleep(std::time::Duration::from_millis(500));
+                }
+            });
+            
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -161,4 +237,7 @@ pub fn run() {
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+    
+    // Cleanup lock file on exit
+    release_lock();
 }

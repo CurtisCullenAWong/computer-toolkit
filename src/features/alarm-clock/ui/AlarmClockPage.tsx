@@ -472,10 +472,10 @@ export default function AlarmClockPage() {
       )}
 
       {/* Top Section: Compact Clock and Date */}
-      <div className="flex flex-col sm:flex-row items-center justify-between p-3.5 sm:p-4 rounded-2xl border border-border bg-card/60 select-none shadow-sm gap-3">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 sm:p-4 rounded-2xl border border-border bg-card/60 select-none shadow-sm gap-3">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 w-full sm:w-auto">
           <Clock className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-(--accent-color)" />
-          <span className="text-xl sm:text-2xl font-extrabold tracking-tight text-foreground tabular-nums font-mono">
+          <span className="min-w-0 whitespace-nowrap text-[clamp(1.1rem,4.2vw,2rem)] font-extrabold tracking-tight text-foreground tabular-nums font-mono leading-none">
             {currentTime.toLocaleTimeString(undefined, {
               hour: "2-digit",
               minute: "2-digit",
@@ -484,7 +484,7 @@ export default function AlarmClockPage() {
             })}
           </span>
         </div>
-        <div className="text-xs sm:text-sm font-semibold text-muted-foreground flex items-center gap-2">
+        <div className="w-full sm:w-auto text-[11px] sm:text-sm font-semibold text-muted-foreground flex items-center gap-2 sm:justify-end text-right sm:text-left sm:ml-4">
           <Calendar className="w-4 h-4 text-(--accent-color)/80" />
           {formatDate(currentTime)}
         </div>
@@ -505,32 +505,55 @@ export default function AlarmClockPage() {
           <CardContent className="p-5 sm:p-6 pt-5 flex flex-col gap-5 flex-1 justify-between">
 
             <div className="flex flex-col gap-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-[1.15fr_0.85fr] gap-4">
 
                 {/* Time input */}
                 <div className="flex flex-col gap-2">
                   <label className="text-xs font-bold text-muted-foreground">Time (12h)</label>
-                  <div className="justify-center flex items-center gap-1.5 bg-(--bg-primary) px-3 py-1.5 rounded-xl border border-(--border-color) flex-wrap sm:flex-nowrap">
-                    <select
-                      value={newAlarmHour}
-                      onChange={(e) => { setNewAlarmHour(Number(e.target.value)); setError(null); }}
-                      className="bg-transparent text-sm font-bold font-mono focus:outline-none cursor-pointer w-12 sm:w-16 text-center py-1 text-foreground appearance-none"
-                    >
-                      {Array.from({ length: 12 }, (_, i) => i + 1).map((h) => (
-                        <option key={h} value={h} className="bg-popover text-foreground">{String(h).padStart(2, "0")}</option>
-                      ))}
-                    </select>
-                    <span className="text-muted-foreground font-semibold font-mono">:</span>
-                    <select
-                      value={newAlarmMinute}
-                      onChange={(e) => { setNewAlarmMinute(Number(e.target.value)); setError(null); }}
-                      className="bg-transparent text-sm font-bold font-mono focus:outline-none cursor-pointer w-12 sm:w-16 text-center py-1 text-foreground appearance-none"
-                    >
-                      {Array.from({ length: 60 }, (_, i) => i).map((m) => (
-                        <option key={m} value={m} className="bg-popover text-foreground">{String(m).padStart(2, "0")}</option>
-                      ))}
-                    </select>
-                    <div className="grid grid-cols-2 w-20 sm:w-22 bg-(--bg-sidebar-hover) rounded-lg p-0.5 border border-border/10 shrink-0 select-none">
+                  <div className="flex w-full flex-col gap-2 bg-(--bg-primary) px-2.5 py-2 sm:px-3 rounded-xl border border-(--border-color)">
+                    <div className="grid grid-cols-[minmax(2.5rem,1fr)_auto_minmax(2.5rem,1fr)] items-center gap-1.5 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto]">
+                      <select
+                        value={newAlarmHour}
+                        onChange={(e) => { setNewAlarmHour(Number(e.target.value)); setError(null); }}
+                        className="min-w-0 w-full bg-transparent text-sm font-bold font-mono focus:outline-none cursor-pointer text-center py-1 text-foreground appearance-none"
+                      >
+                        {Array.from({ length: 12 }, (_, i) => i + 1).map((h) => (
+                          <option key={h} value={h} className="bg-popover text-foreground">{String(h).padStart(2, "0")}</option>
+                        ))}
+                      </select>
+                      <span className="text-muted-foreground font-semibold font-mono">:</span>
+                      <select
+                        value={newAlarmMinute}
+                        onChange={(e) => { setNewAlarmMinute(Number(e.target.value)); setError(null); }}
+                        className="min-w-0 w-full bg-transparent text-sm font-bold font-mono focus:outline-none cursor-pointer text-center py-1 text-foreground appearance-none"
+                      >
+                        {Array.from({ length: 60 }, (_, i) => i).map((m) => (
+                          <option key={m} value={m} className="bg-popover text-foreground">{String(m).padStart(2, "0")}</option>
+                        ))}
+                      </select>
+                      <div className="hidden sm:grid grid-cols-2 w-21 bg-(--bg-sidebar-hover) rounded-lg p-0.5 border border-border/10 shrink-0 select-none">
+                        <button
+                          type="button"
+                          onClick={() => { setNewAlarmPeriod("AM"); setError(null); }}
+                          className={`h-7 text-[10px] font-extrabold rounded-md transition-all cursor-pointer ${
+                            newAlarmPeriod === "AM"
+                              ? "bg-(--accent-color) text-white shadow-sm"
+                              : "bg-transparent text-muted-foreground hover:text-foreground"
+                          }`}
+                        >AM</button>
+                        <button
+                          type="button"
+                          onClick={() => { setNewAlarmPeriod("PM"); setError(null); }}
+                          className={`h-7 text-[10px] font-extrabold rounded-md transition-all cursor-pointer ${
+                            newAlarmPeriod === "PM"
+                              ? "bg-(--accent-color) text-white shadow-sm"
+                              : "bg-transparent text-muted-foreground hover:text-foreground"
+                          }`}
+                        >PM</button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:hidden w-full bg-(--bg-sidebar-hover) rounded-lg p-0.5 border border-border/10 shrink-0 select-none">
                       <button
                         type="button"
                         onClick={() => { setNewAlarmPeriod("AM"); setError(null); }}
@@ -569,7 +592,7 @@ export default function AlarmClockPage() {
               {/* Preset Times */}
               <div className="flex flex-col gap-2.5 mt-2">
                 <label className="text-xs font-bold text-muted-foreground">Preset Times</label>
-                <div className="grid grid-cols-4 gap-1.5">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                   {PRESET_TIMES_12H.map((preset, idx) => {
                     const presetTime24h = format12hTo24h(preset.hour, preset.minute, preset.period);
                     const currentInput24h = format12hTo24h(newAlarmHour, newAlarmMinute, newAlarmPeriod);
