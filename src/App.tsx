@@ -352,7 +352,7 @@ export default function AppLayout() {
                 </h2>
                 <button
                   onClick={() => setIsCollapsed(true)}
-                  className="p-1.5 rounded-lg hover:bg-(--bg-sidebar-hover) text-(--text-sidebar) hover:text-[var(--text-sidebar-title)] transition-all cursor-pointer shrink-0"
+                  className="p-1.5 rounded-lg hover:bg-(--bg-sidebar-hover) text-(--text-sidebar) hover:text-(--text-sidebar-title) transition-all cursor-pointer shrink-0"
                   title="Collapse Sidebar"
                 >
                   <ChevronLeft className="w-4.5 h-4.5" />
@@ -362,18 +362,18 @@ export default function AppLayout() {
               <div className="w-full flex flex-col items-center gap-4">
                 <button
                   onClick={() => setIsCollapsed(false)}
-                  className="p-1.5 rounded-lg hover:bg-[var(--bg-sidebar-hover)] text-[var(--text-sidebar)] hover:text-[var(--text-sidebar-title)] transition-all cursor-pointer"
+                  className="p-1.5 rounded-lg hover:bg-(--bg-sidebar-hover) text-(--text-sidebar) hover:text-(--text-sidebar-title) transition-all cursor-pointer"
                   title="Expand Sidebar"
                 >
                   <ChevronRight className="w-5 h-5" />
                 </button>
-                <div className="border-b border-[var(--border-color)] w-8 my-1" />
+                <div className="border-b border-(--border-color) w-8 my-1" />
               </div>
             )}
           </div>
 
           {/* Navigation Links */}
-          <nav className="flex flex-col gap-1.5 flex-grow">
+          <nav className="flex flex-col gap-1.5 grow">
             {enabledFeatures.map((f) => {
               // Option A: Item is Label Only (has submodules)
               if (f.isLabelOnly) {
@@ -386,8 +386,8 @@ export default function AppLayout() {
                       <button
                         onClick={() => toggleParent(f.id)}
                         className={`flex items-center justify-between w-full px-4 py-3 rounded-xl font-semibold text-sm transition-all duration-150 cursor-pointer ${hasActiveChild
-                            ? "text-[var(--text-sidebar-title)] bg-[var(--bg-sidebar-hover)]/60"
-                            : "text-[var(--text-sidebar)] hover:text-[var(--text-sidebar-title)] hover:bg-[var(--bg-sidebar-hover)]"
+                          ? "text-(--text-sidebar-title) bg-(--bg-sidebar-hover)/60"
+                          : "text-(--text-sidebar) hover:text-(--text-sidebar-title) hover:bg-(--bg-sidebar-hover)"
                           }`}
                       >
                         <div className="flex items-center gap-3.5 min-w-0">
@@ -401,15 +401,15 @@ export default function AppLayout() {
                       </button>
 
                       {isExpanded && (
-                        <div className="flex flex-col gap-1 ml-4 pl-4 border-l border-[var(--border-color)] mt-0.5">
+                        <div className="flex flex-col gap-1 ml-4 pl-4 border-l border-(--border-color) mt-0.5">
                           {f.subModules?.map((sm) => (
                             <NavLink
                               key={sm.id}
                               to={sm.path}
                               className={({ isActive }) =>
                                 `flex items-center gap-2.5 px-3 py-2 rounded-lg font-medium text-xs transition-all duration-150 ${isActive
-                                  ? "text-[var(--text-sidebar-active)] bg-[var(--accent-color)]"
-                                  : "text-[var(--text-sidebar)] hover:text-[var(--text-sidebar-title)] hover:bg-[var(--bg-sidebar-hover)]"
+                                  ? "text-(--text-sidebar-active) bg-(--accent-color)"
+                                  : "text-(--text-sidebar) hover:text-(--text-sidebar-title) hover:bg-(--bg-sidebar-hover)"
                                 }`
                               }
                             >
@@ -429,8 +429,8 @@ export default function AppLayout() {
                       onMouseEnter={(e) => handleParentMouseEnter(e, f)}
                       onMouseLeave={handleParentMouseLeave}
                       className={`flex items-center justify-center w-full aspect-square rounded-xl transition-all duration-150 cursor-pointer relative ${hasActiveChild
-                          ? "text-[var(--text-sidebar-active)] bg-[var(--accent-color)]"
-                          : "text-[var(--text-sidebar)] hover:text-[var(--text-sidebar-title)] hover:bg-[var(--bg-sidebar-hover)]"
+                        ? "text-(--text-sidebar-active) bg-(--accent-color)"
+                        : "text-(--text-sidebar) hover:text-(--text-sidebar-title) hover:bg-(--bg-sidebar-hover)"
                         }`}
                     >
                       {getIcon(f.icon, "w-5 h-5")}
@@ -449,8 +449,8 @@ export default function AppLayout() {
                     to={path}
                     className={({ isActive }) =>
                       `flex items-center gap-3.5 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-150 ${isActive
-                        ? "text-[var(--text-sidebar-active)] bg-[var(--accent-color)]"
-                        : "text-[var(--text-sidebar)] hover:text-[var(--text-sidebar-title)] hover:bg-[var(--bg-sidebar-hover)]"
+                        ? "text-(--text-sidebar-active) bg-(--accent-color)"
+                        : "text-(--text-sidebar) hover:text-(--text-sidebar-title) hover:bg-(--bg-sidebar-hover)"
                       }`
                     }
                   >
@@ -468,8 +468,8 @@ export default function AppLayout() {
                     onMouseLeave={handleMouseLeave}
                     className={({ isActive }) =>
                       `flex items-center justify-center w-full aspect-square rounded-xl transition-all duration-150 ${isActive
-                        ? "text-[var(--text-sidebar-active)] bg-[var(--accent-color)]"
-                        : "text-[var(--text-sidebar)] hover:text-[var(--text-sidebar-title)] hover:bg-[var(--bg-sidebar-hover)]"
+                        ? "text-(--text-sidebar-active) bg-(--accent-color)"
+                        : "text-(--text-sidebar) hover:text-(--text-sidebar-title) hover:bg-(--bg-sidebar-hover)"
                       }`
                     }
                   >
@@ -482,36 +482,41 @@ export default function AppLayout() {
         </div>
 
         {/* Configurations Panel */}
-        <div className="flex flex-col gap-4 border-t border-[var(--border-color)] pt-4 mt-auto">
+        <div className="flex flex-col gap-4 border-t border-(--border-color) pt-4 mt-auto">
           {!isCollapsed ? (
             <>
               {/* Accent Presets Dropdown */}
               <div className="flex flex-col gap-2">
-                <div className="text-[10px] uppercase font-bold tracking-wider text-[var(--text-sidebar)] opacity-60 flex items-center gap-1.5 select-none">
+                <div className="text-[10px] uppercase font-bold tracking-wider text-(--text-sidebar) opacity-60 flex items-center gap-1.5 select-none">
                   <Palette className="w-3.5 h-3.5" />
                   Accent Preset
                 </div>
                 <Select value={themeColor} onValueChange={(val) => setThemeColor(val as ThemeColor)}>
-                  <SelectTrigger className="w-full h-9 font-semibold text-xs border-[var(--border-color)] bg-[var(--bg-select-trigger)] text-[var(--text-select-trigger)] hover:bg-[var(--bg-select-trigger-hover)] transition-all select-none">
+                  <SelectTrigger className="w-full h-9 font-semibold text-xs border-(--border-color) bg-(--bg-select-trigger) text-(--text-select-trigger) hover:bg-(--bg-select-trigger-hover) transition-all select-none">
                     <SelectValue placeholder="Select Accent" />
                   </SelectTrigger>
                   <SelectContent className="bg-popover border-border text-foreground">
                     {PRESET_PALETTES.map((preset) => {
                       const colors = getPresetColors(preset.id, isDarkActive);
                       return (
-                        <SelectItem key={preset.id} value={preset.id} className="text-xs font-semibold cursor-pointer">
-                          <div className="flex items-center justify-between gap-4 w-full min-w-[150px]">
-                            <span>{preset.name}</span>
-                            <div className="flex gap-1 border border-border/20 rounded p-0.5 bg-black/10 shrink-0">
+                        <SelectItem
+                          key={preset.id}
+                          value={preset.id}
+                          className="text-xs font-semibold cursor-pointer data-highlighted:text-slate-950 dark:data-highlighted:text-slate-950"
+                        >
+                          <div className="flex items-center justify-between gap-4 w-full min-w-37.5">
+                            {/* Force a highly readable text color shift on hover/highlight */}
+                            <span className="data-highlighted:text-slate-950 mix-blend-difference invert dark:invert-0 font-bold">
+                              {preset.name}
+                            </span>
+                            <div className="flex gap-1 border border-black/40 dark:border-white/40 rounded p-0.5 bg-black/40 dark:bg-black/60 shrink-0 shadow-md">
                               {colors.map((c, idx) => (
                                 <div
                                   key={idx}
                                   style={{
-                                    width: "6px",
-                                    height: "6px",
-                                    borderRadius: "50%",
                                     backgroundColor: c,
                                   }}
+                                  className="w-2.5 h-2.5 rounded-full ring-1 ring-white/90 dark:ring-white/50 border border-black/20"
                                 />
                               ))}
                             </div>
@@ -525,13 +530,13 @@ export default function AppLayout() {
 
               {/* Theme Switcher */}
               <div className="flex flex-col gap-2">
-                <div className="text-[10px] uppercase font-bold tracking-wider text-[var(--text-sidebar)] opacity-60 select-none">Theme</div>
-                <div className="flex bg-[var(--bg-sidebar-hover)] rounded-lg p-1 gap-0.5">
+                <div className="text-[10px] uppercase font-bold tracking-wider text-(--text-sidebar) opacity-60 select-none">Theme</div>
+                <div className="flex bg-(--bg-sidebar-hover) rounded-lg p-1 gap-0.5">
                   <button
                     onClick={() => setTheme("light")}
                     className={`flex-1 py-1.5 px-1 text-xs font-semibold rounded-md flex justify-center items-center gap-1 transition-all duration-150 cursor-pointer ${theme === "light"
-                        ? "bg-[var(--theme-btn-active-bg)] text-[var(--theme-btn-active-text)] shadow-sm"
-                        : "bg-transparent text-[var(--text-sidebar)] hover:text-[var(--text-sidebar-title)] hover:bg-[var(--bg-sidebar-hover)]"
+                      ? "bg-(--theme-btn-active-bg) text-(--theme-btn-active-text) shadow-sm"
+                      : "bg-transparent text-(--text-sidebar) hover:text-(--text-sidebar-title) hover:bg-(--bg-sidebar-hover)"
                       }`}
                     title="Light Mode"
                   >
@@ -541,8 +546,8 @@ export default function AppLayout() {
                   <button
                     onClick={() => setTheme("dark")}
                     className={`flex-1 py-1.5 px-1 text-xs font-semibold rounded-md flex justify-center items-center gap-1 transition-all duration-150 cursor-pointer ${theme === "dark"
-                        ? "bg-[var(--theme-btn-active-bg)] text-[var(--theme-btn-active-text)] shadow-sm"
-                        : "bg-transparent text-[var(--text-sidebar)] hover:text-[var(--text-sidebar-title)] hover:bg-[var(--bg-sidebar-hover)]"
+                      ? "bg-(--theme-btn-active-bg) text-(--theme-btn-active-text) shadow-sm"
+                      : "bg-transparent text-(--text-sidebar) hover:text-(--text-sidebar-title) hover:bg-(--bg-sidebar-hover)"
                       }`}
                     title="Dark Mode"
                   >
@@ -552,8 +557,8 @@ export default function AppLayout() {
                   <button
                     onClick={() => setTheme("system")}
                     className={`flex-1 py-1.5 px-1 text-xs font-semibold rounded-md flex justify-center items-center gap-1 transition-all duration-150 cursor-pointer ${theme === "system"
-                        ? "bg-[var(--theme-btn-active-bg)] text-[var(--theme-btn-active-text)] shadow-sm"
-                        : "bg-transparent text-[var(--text-sidebar)] hover:text-[var(--text-sidebar-title)] hover:bg-[var(--bg-sidebar-hover)]"
+                      ? "bg-(--theme-btn-active-bg) text-(--theme-btn-active-text) shadow-sm"
+                      : "bg-transparent text-(--text-sidebar) hover:text-(--text-sidebar-title) hover:bg-(--bg-sidebar-hover)"
                       }`}
                     title="System Settings"
                   >
@@ -570,16 +575,16 @@ export default function AppLayout() {
                 onClick={cycleThemeColor}
                 onMouseEnter={(e) => handleMouseEnter(e, `Accent: ${PRESET_PALETTES.find((p) => p.id === themeColor)?.name || ""} (Click to cycle)`)}
                 onMouseLeave={handleMouseLeave}
-                className="flex items-center justify-center w-10 h-10 rounded-xl hover:bg-[var(--bg-sidebar-hover)] text-[var(--text-sidebar)] hover:text-[var(--text-sidebar-title)] transition-all cursor-pointer border border-[var(--border-color)]/50"
+                className="flex items-center justify-center w-10 h-10 rounded-xl hover:bg-(--bg-sidebar-hover) text-(--text-sidebar) hover:text-(--text-sidebar-title) transition-all cursor-pointer border border-(--border-color)/50"
               >
-                <Palette className="w-5 h-5 text-[var(--accent-color)]" />
+                <Palette className="w-5 h-5 text-(--accent-color)" />
               </button>
 
               <button
                 onClick={cycleTheme}
                 onMouseEnter={(e) => handleMouseEnter(e, `Theme: ${theme.charAt(0).toUpperCase() + theme.slice(1)} (Click to cycle)`)}
                 onMouseLeave={handleMouseLeave}
-                className="flex items-center justify-center w-10 h-10 rounded-xl hover:bg-[var(--bg-sidebar-hover)] text-[var(--text-sidebar)] hover:text-[var(--text-sidebar-title)] transition-all cursor-pointer border border-[var(--border-color)]/50"
+                className="flex items-center justify-center w-10 h-10 rounded-xl hover:bg-(--bg-sidebar-hover) text-(--text-sidebar) hover:text-(--text-sidebar-title) transition-all cursor-pointer border border-(--border-color)/50"
               >
                 {theme === "light" && <Sun className="w-5 h-5 text-amber-500" />}
                 {theme === "dark" && <Moon className="w-5 h-5 text-indigo-400" />}
@@ -591,17 +596,17 @@ export default function AppLayout() {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden py-6 px-8 bg-[var(--bg-primary)]">
+      <div className="flex-1 flex flex-col overflow-hidden py-6 px-8 bg-(--bg-primary)">
         {headerName && (
           <div className="mb-5 select-text animate-[fade-in_0.2s_ease-out]">
-            <h1 className="text-3xl font-extrabold tracking-tight text-[var(--text-primary)] mb-1">
+            <h1 className="text-3xl font-extrabold tracking-tight text-(--text-primary) mb-1">
               {headerName}
             </h1>
-            <p className="text-sm text-[var(--text-secondary)]">{headerDesc}</p>
+            <p className="text-sm text-(--text-secondary)">{headerDesc}</p>
           </div>
         )}
 
-        <div className="flex-grow min-h-0 select-text overflow-y-auto">
+        <div className="grow min-h-0 select-text overflow-y-auto">
           <Routes>
             {routesToRegister.map((r) => {
               const Component = r.component;
@@ -623,10 +628,10 @@ export default function AppLayout() {
                 path="*"
                 element={
                   <div className="flex flex-col items-center justify-center h-full text-center py-12">
-                    <Terminal className="w-12 h-12 text-[var(--accent-color)] opacity-60 mb-4 animate-pulse" />
-                    <h3 className="text-lg font-bold text-[var(--text-primary)] mb-1">No Features Enabled</h3>
-                    <p className="text-xs text-[var(--text-secondary)] max-w-xs">
-                      Please enable at least one feature in <code className="px-1.5 py-0.5 rounded bg-[var(--bg-sidebar-hover)] text-(--text-primary) font-mono">toolkit.config.ts</code> to get started.
+                    <Terminal className="w-12 h-12 text-(--accent-color) opacity-60 mb-4 animate-pulse" />
+                    <h3 className="text-lg font-bold text-(--text-primary) mb-1">No Features Enabled</h3>
+                    <p className="text-xs text-(--text-secondary) max-w-xs">
+                      Please enable at least one feature in <code className="px-1.5 py-0.5 rounded bg-(--bg-sidebar-hover) text-(--text-primary) font-mono">toolkit.config.ts</code> to get started.
                     </p>
                   </div>
                 }

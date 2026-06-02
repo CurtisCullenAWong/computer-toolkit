@@ -387,6 +387,27 @@ input[type="number"] {
   background: var(--accent-color);
 }
 
+/* Alarm list custom scrollbar */
+.alarm-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
+}
+.alarm-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.alarm-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 999px;
+}
+.alarm-scrollbar::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--border-color) 80%, transparent);
+  border-radius: 999px;
+  transition: background 0.2s ease;
+}
+.alarm-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-color);
+}
+
 /* ─────────────────────────────────────────────────────────
    Premium Options Dropdown Styling
    Targets the Radix SelectContent portal overlay

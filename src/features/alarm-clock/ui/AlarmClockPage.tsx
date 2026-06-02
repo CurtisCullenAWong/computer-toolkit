@@ -32,6 +32,8 @@ import {
   getAllAudioFiles,
   saveAudioFile,
   deleteAudioFile,
+  getCachedObjectUrl,
+  revokeCachedObjectUrl,
   AudioFile,
 } from "../utils/db";
 
@@ -94,7 +96,19 @@ const formatDate = (date: Date): string =>
 export default function AlarmClockPage() {
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  const [alarms, setAlarms] = useState<Alarm[]>([]);
+  // ─── Lazy-initialize alarms from localStorage ───────────────────────────────
+  // IMPORTANT: must be a lazy initializer (callback form of useState), NOT a
+  // separate useEffect load.  A save-effect runs after every render — if alarms
+  // starts as [] and the load is async, the save-effect fires with [] BEFORE the
+  // load resolves, permanently erasing any stored alarms.
+  const [alarms, setAlarms] = useState<Alarm[]>(() => {
+    try {
+      const stored = localStorage.getItem("alarms");
+      return stored ? (JSON.parse(stored) as Alarm[]) : [];
+    } catch {
+      return [];
+    }
+  });
   const [audioFiles, setAudioFiles] = useState<AudioFile[]>([]);
   const [selectedSoundId, setSelectedSoundId] = useState<string>("beep");
 
@@ -120,7 +134,7 @@ export default function AlarmClockPage() {
   // Inline delete confirmation (replaces browser confirm())
   const [pendingDeleteAudioId, setPendingDeleteAudioId] = useState<string | null>(null);
 
-  // ─── Initial Load ──────────────────────────────────────────────────────────
+  // ─── Initial Load (audio files only — alarms are loaded via lazy useState) ──
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -128,14 +142,6 @@ export default function AlarmClockPage() {
         setAudioFiles(files);
       } catch (err) {
         console.error("Failed to load audio files from DB", err);
-      }
-      const storedAlarms = localStorage.getItem("alarms");
-      if (storedAlarms) {
-        try {
-          setAlarms(JSON.parse(storedAlarms));
-        } catch {
-          /* ignore corrupt data */
-        }
       }
     };
     loadData();
@@ -224,10 +230,8 @@ export default function AlarmClockPage() {
       previewAudioRef.current.onended = null;
       previewAudioRef.current = null;
     }
-    if (previewUrlRef.current) {
-      URL.revokeObjectURL(previewUrlRef.current);
-      previewUrlRef.current = null;
-    }
+    // Do NOT revoke previewUrlRef — it's a cached URL managed by db.ts
+    previewUrlRef.current = null;
     setPlayingPreviewId(null);
   }, []);
 
@@ -238,7 +242,7 @@ export default function AlarmClockPage() {
     }
     stopPreview();
 
-    const url = URL.createObjectURL(file.blob);
+    const url = getCachedObjectUrl(file);
     previewUrlRef.current = url;
     const audio = new Audio(url);
     audio.play()
@@ -247,16 +251,12 @@ export default function AlarmClockPage() {
         setPlayingPreviewId(file.id);
         audio.onended = () => {
           setPlayingPreviewId(null);
-          if (previewUrlRef.current === url) {
-            URL.revokeObjectURL(url);
-            previewUrlRef.current = null;
-          }
+          previewUrlRef.current = null;
           previewAudioRef.current = null;
         };
       })
       .catch((err) => {
         console.error("Error playing preview", err);
-        URL.revokeObjectURL(url);
         previewUrlRef.current = null;
       });
   }, [playingPreviewId, stopPreview]);
@@ -266,16 +266,13 @@ export default function AlarmClockPage() {
 
   // ─── Alarm Trigger / Dismiss ───────────────────────────────────────────────
   const dismissAlarm = useCallback(() => {
-    // Stop custom audio + revoke URL
+    // Stop custom audio — do NOT revoke the URL, it's cached in db.ts
     if (alarmAudioRef.current) {
       alarmAudioRef.current.pause();
       alarmAudioRef.current.onended = null;
       alarmAudioRef.current = null;
     }
-    if (alarmUrlRef.current) {
-      URL.revokeObjectURL(alarmUrlRef.current);
-      alarmUrlRef.current = null;
-    }
+    alarmUrlRef.current = null;
     stopSynthBeep();
 
     setAlarms((prev) =>
@@ -297,7 +294,8 @@ export default function AlarmClockPage() {
       } else {
         const soundFile = currentFiles.find((f) => f.id === alarm.soundId);
         if (soundFile) {
-          const url = URL.createObjectURL(soundFile.blob);
+          // Use cached URL — no revokeObjectURL needed here
+          const url = getCachedObjectUrl(soundFile);
           alarmUrlRef.current = url;
           const audio = new Audio(url);
           audio.loop = true;
@@ -305,7 +303,6 @@ export default function AlarmClockPage() {
             .then(() => { alarmAudioRef.current = audio; })
             .catch((err) => {
               console.error("Failed to play custom alarm sound, falling back to beep", err);
-              URL.revokeObjectURL(url);
               alarmUrlRef.current = null;
               startSynthBeep();
             });
@@ -339,6 +336,8 @@ export default function AlarmClockPage() {
     setPendingDeleteAudioId(null);
     try {
       await deleteAudioFile(id);
+      // Revoke and remove the cached object URL for this file
+      revokeCachedObjectUrl(id);
       setAudioFiles((prev) => prev.filter((f) => f.id !== id));
       if (selectedSoundId === id) setSelectedSoundId("beep");
       setAlarms((prev) =>
@@ -426,7 +425,7 @@ export default function AlarmClockPage() {
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
-    <div className="mx-auto w-full max-w-7xl h-full min-h-0 flex flex-col gap-5 px-1 sm:px-0 overflow-hidden">
+    <div className="mx-auto w-full max-w-7xl flex flex-col gap-5 px-1 sm:px-0">
       {/* Alarm Trigger Fullscreen Overlay */}
       {triggeredAlarm && (
         <div className="alarm-trigger-overlay">
@@ -491,11 +490,11 @@ export default function AlarmClockPage() {
         </div>
       </div>
 
-      {/* Grid: 3 Columns */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 lg:gap-6 items-stretch w-full flex-1 min-h-0 overflow-hidden">
+      {/* Grid: 1 col on mobile, 2 col on md, 3 col on xl */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6 w-full">
 
         {/* Column 1: Set New Alarm */}
-        <Card className="shadow-md border border-border rounded-2xl h-full min-h-0 flex flex-col bg-card/60 overflow-hidden">
+        <Card className="shadow-md border border-border rounded-2xl flex flex-col bg-card/60 overflow-hidden">
           <CardHeader className="p-5 sm:p-6 pb-0 shrink-0">
             <CardTitle className="text-base font-bold flex items-center gap-2.5">
               <Clock className="w-4.5 h-4.5 text-(--accent-color)" />
@@ -503,7 +502,7 @@ export default function AlarmClockPage() {
             </CardTitle>
             <CardDescription className="text-xs text-muted-foreground">Schedule a custom alarm event.</CardDescription>
           </CardHeader>
-          <CardContent className="p-5 sm:p-6 pt-5 flex flex-col gap-5 flex-1 justify-between min-h-0 overflow-hidden">
+          <CardContent className="p-5 sm:p-6 pt-5 flex flex-col gap-5 flex-1 justify-between">
 
             <div className="flex flex-col gap-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -652,7 +651,7 @@ export default function AlarmClockPage() {
         </Card>
 
         {/* Column 2: Custom Alarm Sounds */}
-        <Card className="shadow-md border border-border rounded-2xl h-full min-h-0 flex flex-col bg-card/60 overflow-hidden">
+        <Card className="shadow-md border border-border rounded-2xl flex flex-col bg-card/60 overflow-hidden">
           <CardHeader className="p-5 sm:p-6 pb-0 shrink-0">
             <CardTitle className="text-base font-bold flex items-center gap-2.5">
               <Music className="w-4.5 h-4.5 text-(--accent-color)" />
@@ -660,7 +659,7 @@ export default function AlarmClockPage() {
             </CardTitle>
             <CardDescription className="text-xs text-muted-foreground">Upload your audio tracks to play when alarms trigger.</CardDescription>
           </CardHeader>
-          <CardContent className="p-5 sm:p-6 pt-5 flex flex-col gap-4 flex-1 min-h-0 justify-start overflow-hidden">
+          <CardContent className="p-5 sm:p-6 pt-5 flex flex-col gap-4 flex-1 min-h-0 justify-start">
             <div className="import-zone shrink-0 flex flex-col items-center justify-center py-5 sm:py-6 border-dashed border-2 rounded-xl bg-black/5 hover:bg-black/10 transition-all cursor-pointer relative">
               <UploadCloud className="w-8 h-8 sm:w-9 sm:h-9 text-(--accent-color) mb-1" />
               <p className="text-xs sm:text-sm font-semibold text-foreground text-center px-2">
@@ -689,7 +688,7 @@ export default function AlarmClockPage() {
                   No custom sounds uploaded yet.
                 </div>
               ) : (
-                <div className="audio-list flex-1 overflow-y-auto flex flex-col gap-1.5 pr-1 min-h-0 scrollbar-thin" style={{ contentVisibility: "auto" }}>
+                <div className="audio-list flex-1 overflow-y-auto flex flex-col gap-1.5 pr-1 scrollbar-thin" style={{ maxHeight: "320px", contentVisibility: "auto" }}>
                   {audioFiles.map((file) => (
                     <div
                       key={file.id}
@@ -742,7 +741,7 @@ export default function AlarmClockPage() {
         </Card>
 
         {/* Column 3: Active Alarms */}
-        <Card className="shadow-md border border-border rounded-2xl h-full min-h-0 flex flex-col bg-card/60 overflow-hidden">
+        <Card className="shadow-md border border-border rounded-2xl flex flex-col bg-card/60 overflow-hidden md:col-span-2 xl:col-span-1">
           <CardHeader className="p-5 sm:p-6 pb-0 shrink-0">
             <CardTitle className="text-base font-bold flex items-center gap-2.5">
               <Bell className="w-4.5 h-4.5 text-(--accent-color)" />
@@ -750,13 +749,13 @@ export default function AlarmClockPage() {
             </CardTitle>
             <CardDescription className="text-xs text-muted-foreground">Toggle and manage active scheduled alarms.</CardDescription>
           </CardHeader>
-          <CardContent className="p-5 sm:p-6 pt-5 flex flex-col gap-4 flex-1 min-h-0 justify-start overflow-hidden">
+          <CardContent className="p-5 sm:p-6 pt-5 flex flex-col gap-4 flex-1 min-h-0 justify-start">
             {alarms.length === 0 ? (
               <div className="grow flex items-center justify-center border border-dashed rounded-xl bg-muted/10 p-6 text-center text-xs text-muted-foreground">
                 No alarms scheduled.
               </div>
             ) : (
-              <div className="alarm-list flex-1 min-h-0 overflow-y-auto flex flex-col gap-2.5 pr-1 scrollbar-thin" style={{ contentVisibility: "auto" }}>
+              <div className="alarm-list flex-1 min-h-0 overflow-y-auto flex flex-col gap-2.5 pr-1.5 alarm-scrollbar" style={{ maxHeight: "400px" }}>
                 {alarms.map((alarm) => {
                   const soundFile = audioFiles.find((f) => f.id === alarm.soundId);
                   const soundName = alarm.soundId === "beep" ? "System Beep" : soundFile ? soundFile.name : "Unknown Sound";
