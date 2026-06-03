@@ -172,6 +172,10 @@ pub fn run() {
             commands::autostart::set_autostart,
             commands::window_prefs::get_minimize_on_close,
             commands::window_prefs::set_minimize_on_close,
+            commands::cleaner::scan_junk_folders,
+            commands::cleaner::clean_junk_folders,
+            commands::alarms::read_alarms,
+            commands::alarms::write_alarms,
         ])
         .setup(|app| {
             // 1. Correctly instantiate the items using the AppHandle

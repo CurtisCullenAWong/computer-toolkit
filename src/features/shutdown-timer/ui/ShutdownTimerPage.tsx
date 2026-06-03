@@ -55,10 +55,6 @@ export default function ShutdownTimerPage() {
   const [inputMinutes, setInputMinutes] = useState(1);
   const [inputSeconds, setInputSeconds] = useState(0);
 
-  // Sleep Wake Up Duration States (Removed as wake schedule is disabled)
-  // const [sleepHours, setSleepHours] = useState(0);
-  // const [sleepMinutes, setSleepMinutes] = useState(30);
-  // const [sleepSeconds, setSleepSeconds] = useState(0);
 
   const [status, setStatus] = useState<TimerStatus>("idle");
   const [timeLeft, setTimeLeft] = useState(0);
@@ -331,53 +327,6 @@ export default function ShutdownTimerPage() {
                   </Select>
                 </div>
 
-                {/* Stay Asleep For (Scheduled Wake Up) - Commented out as requested
-                {(action === "sleep" || action === "hibernate") && (
-                  <div className="flex flex-col gap-2 p-3 bg-muted/40 rounded-xl border border-border/60 animate-[fade-in_0.2s_ease-out]">
-                    <div className="flex justify-between items-center text-sm font-semibold text-muted-foreground">
-                      <span>Stay Asleep For (Scheduled Wake Up)</span>
-                      <span className="font-bold text-(--accent-color)">
-                        {sleepHours > 0 ? `${sleepHours}h ` : ""}{sleepMinutes}m {sleepSeconds}s
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-3 gap-2 w-full mt-1">
-                      <div className="flex flex-col gap-1 text-center">
-                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Hours</span>
-                        <Input
-                          type="number"
-                          min={0}
-                          max={23}
-                          className="text-center font-semibold font-mono h-8 text-xs"
-                          value={sleepHours}
-                          onChange={(e) => setSleepHours(Math.max(0, Math.min(23, Number(e.target.value))))}
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1 text-center">
-                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Minutes</span>
-                        <Input
-                          type="number"
-                          min={0}
-                          max={59}
-                          className="text-center font-semibold font-mono h-8 text-xs"
-                          value={sleepMinutes}
-                          onChange={(e) => setSleepMinutes(Math.max(0, Math.min(59, Number(e.target.value))))}
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1 text-center">
-                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Seconds</span>
-                        <Input
-                          type="number"
-                          min={0}
-                          max={59}
-                          className="text-center font-semibold font-mono h-8 text-xs"
-                          value={sleepSeconds}
-                          onChange={(e) => setSleepSeconds(Math.max(0, Math.min(59, Number(e.target.value))))}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-                */}
 
                 {/* Quick Slider Setup */}
                 <div className="flex flex-col gap-2">

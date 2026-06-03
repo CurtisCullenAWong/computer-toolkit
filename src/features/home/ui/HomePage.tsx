@@ -11,6 +11,11 @@ import {
   AlertTriangle,
   Terminal,
   Minimize2,
+  Trash2,
+  Wind,
+  CheckCircle2,
+  ShieldAlert,
+  Sparkles,
 } from "lucide-react";
 import {
   Card,
@@ -64,6 +69,58 @@ const safeInvoke = async <T,>(cmd: string, args?: Record<string, any>): Promise<
           ? "Minimize on close enabled."
           : "Minimize on close disabled.") as T;
       }
+      if (cmd === "scan_junk_folders") {
+        return {
+          temp_files_count: 1420,
+          temp_files_size: 348000000,
+          prefetch_logs_count: 480,
+          prefetch_logs_size: 185000000,
+          app_cache_count: 120,
+          app_cache_size: 15400000,
+          is_admin: true,
+        } as T;
+      }
+      if (cmd === "clean_junk_folders") {
+        const cleanTemp = args?.cleanTemp ?? args?.clean_temp ?? true;
+        const cleanPrefetchLogs = args?.cleanPrefetchLogs ?? args?.clean_prefetch_logs ?? true;
+        const cleanAppCache = args?.cleanAppCache ?? args?.clean_app_cache ?? true;
+        let deletedCount = 0;
+        let deletedSize = 0;
+        let skippedCount = 0;
+        let skippedSize = 0;
+        if (cleanTemp) {
+          deletedCount += 1350;
+          deletedSize += 320000000;
+          skippedCount += 70;
+          skippedSize += 28000000;
+        }
+        if (cleanPrefetchLogs) {
+          deletedCount += 460;
+          deletedSize += 178000000;
+          skippedCount += 20;
+          skippedSize += 7000000;
+        }
+        if (cleanAppCache) {
+          deletedCount += 118;
+          deletedSize += 15000000;
+          skippedCount += 2;
+          skippedSize += 400000;
+        }
+        return {
+          deleted_count: deletedCount,
+          deleted_size: deletedSize,
+          skipped_count: skippedCount,
+          skipped_size: skippedSize,
+        } as T;
+      }
+      if (cmd === "read_alarms") {
+        return (localStorage.getItem("alarms") ?? "[]") as T;
+      }
+      if (cmd === "write_alarms") {
+        const json = args?.alarmsJson ?? args?.alarms_json ?? "[]";
+        localStorage.setItem("alarms", json);
+        return null as T;
+      }
       throw new Error(`Mock command "${cmd}" not implemented`);
     }
   } catch (err) {
@@ -101,6 +158,15 @@ export default function HomePage() {
 
   // Summary counts
   const [activeAlarmsCount, setActiveAlarmsCount] = useState(0);
+
+  // Cleaner state
+  const [cleanerState, setCleanerState] = useState<'idle' | 'scanning' | 'scanned' | 'cleaning' | 'finished'>('idle');
+  const [cleanTemp, setCleanTemp] = useState(true);
+  const [cleanPrefetchLogs, setCleanPrefetchLogs] = useState(true);
+  const [cleanAppCache, setCleanAppCache] = useState(true);
+  const [scanResults, setScanResults] = useState<any>(null);
+  const [cleanResults, setCleanResults] = useState<any>(null);
+  const [isAdminUser, setIsAdminUser] = useState(true);
 
   useEffect(() => {
 
@@ -151,24 +217,38 @@ export default function HomePage() {
       }
     };
 
-    // 5. Read alarms count from localStorage (local only, no IPC needed)
-    const savedAlarms = localStorage.getItem("alarms");
-    if (savedAlarms) {
+    // 5. Read alarms from backend file persistence
+    const runAlarmsCheck = async () => {
       try {
-        const parsed = JSON.parse(savedAlarms);
-        if (Array.isArray(parsed)) {
-          setActiveAlarmsCount(parsed.filter((a: any) => a.enabled).length);
+        const alarmsJson = await safeInvoke<string>("read_alarms");
+        if (alarmsJson) {
+          const parsed = JSON.parse(alarmsJson);
+          if (Array.isArray(parsed)) {
+            setActiveAlarmsCount(parsed.filter((a: any) => a.enabled).length);
+          }
         }
       } catch (e) {
-        console.error("Error parsing alarms count", e);
+        console.error("Failed to query persist alarms", e);
       }
-    }
+    };
+
+    // 6. Check administrator status
+    const runAdminCheck = async () => {
+      try {
+        const admin = await safeInvoke<boolean>("is_admin");
+        setIsAdminUser(admin);
+      } catch (e) {
+        console.error("Failed to check admin status", e);
+      }
+    };
 
 
     runGpuDetection();
     runGpuPreferenceCheck();
     runAutostartCheck();
     runMinimizeOnCloseCheck();
+    runAdminCheck();
+    runAlarmsCheck();
   }, []);
 
   // Handle autostart toggle — loading reflects actual registry write
@@ -199,6 +279,55 @@ export default function HomePage() {
     } finally {
       setMinimizeOnCloseLoading(false);
     }
+  }, []);
+
+  // Cleaner functions
+  const formatSize = (bytes: number): string => {
+    if (!bytes || bytes === 0) return "0 Bytes";
+    const k = 1024;
+    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  };
+
+  const handleScan = useCallback(async () => {
+    setCleanerState("scanning");
+    setScanResults(null);
+    try {
+      const results = await safeInvoke<any>("scan_junk_folders");
+      setScanResults(results);
+      setIsAdminUser(results.is_admin);
+      setCleanerState("scanned");
+    } catch (e) {
+      console.error("Scanning failed", e);
+      setCleanerState("idle");
+    }
+  }, []);
+
+  const handleClean = useCallback(async () => {
+    setCleanerState("cleaning");
+    setCleanResults(null);
+    try {
+      const results = await safeInvoke<any>("clean_junk_folders", {
+        cleanTemp: cleanTemp,
+        clean_temp: cleanTemp,
+        cleanPrefetchLogs: cleanPrefetchLogs,
+        clean_prefetch_logs: cleanPrefetchLogs,
+        cleanAppCache: cleanAppCache,
+        clean_app_cache: cleanAppCache,
+      });
+      setCleanResults(results);
+      setCleanerState("finished");
+    } catch (e) {
+      console.error("Cleaning failed", e);
+      setCleanerState("scanned");
+    }
+  }, [cleanTemp, cleanPrefetchLogs, cleanAppCache]);
+
+  const handleResetCleaner = useCallback(() => {
+    setCleanerState("idle");
+    setScanResults(null);
+    setCleanResults(null);
   }, []);
 
   // Open confirmation dialog before switching GPU
@@ -236,7 +365,7 @@ export default function HomePage() {
   }, [triggerGpuToggle]);
 
   return (
-    <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-4 select-none overflow-y-auto pr-2 pb-5 xl:grid-cols-3">
+    <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-4 select-none overflow-y-auto p-1 pr-2 pb-5 xl:grid-cols-3 h-full">
       {/* Admin Elevation Prompt Modal */}
       {showAdminPromptModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
@@ -463,6 +592,271 @@ export default function HomePage() {
                 {minimizeOnCloseMessage}
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* One-Click System Cleaner Card */}
+        <Card className="border border-border bg-card/60 backdrop-blur-md shadow-sm rounded-2xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-5 opacity-5 pointer-events-none">
+            <Trash2 className="w-16 h-16 text-primary" />
+          </div>
+          <CardHeader className="p-4 pb-2">
+            <CardTitle className="text-base font-bold flex items-center gap-2">
+              <Trash2 className="w-4.5 h-4.5 text-(--accent-color)" />
+              One-Click System Cleaner
+            </CardTitle>
+            <CardDescription className="text-[11px]">
+              Optimize Windows by cleaning caches, temp files, and logs.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-4 pt-0 flex flex-col gap-3">
+            {/* Cleaner categories */}
+            <div className="flex flex-col gap-2">
+              
+              {/* Category 1: Temp Folders */}
+              <div className="flex items-center justify-between bg-(--bg-primary) p-2.5 rounded-xl border border-(--border-color)">
+                <div className="flex flex-col gap-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-(--text-primary)">
+                      System & User Temp
+                    </span>
+                    <span className="text-[9px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded-full font-bold">
+                      Safe
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-(--text-secondary) leading-tight">
+                    Clears temporary directory cache created by Windows and apps.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2.5 shrink-0 ml-3">
+                  {(cleanerState === "scanning" || cleanerState === "cleaning") && cleanTemp ? (
+                    <Loader2 className="w-3.5 h-3.5 text-(--accent-color) animate-spin" />
+                  ) : (
+                    scanResults && (
+                      <span className="text-[11px] font-bold text-(--text-secondary)">
+                        {formatSize(scanResults.temp_files_size)}
+                      </span>
+                    )
+                  )}
+                  <Switch
+                    checked={cleanTemp}
+                    disabled={cleanerState === "scanning" || cleanerState === "cleaning" || cleanerState === "finished"}
+                    onCheckedChange={setCleanTemp}
+                  />
+                </div>
+              </div>
+
+              {/* Category 2: Prefetch & Logs */}
+              <div className="flex items-center justify-between bg-(--bg-primary) p-2.5 rounded-xl border border-(--border-color)">
+                <div className="flex flex-col gap-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-(--text-primary)">
+                      Windows Prefetch & Logs
+                    </span>
+                    <span className="text-[9px] bg-amber-500/10 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded-full font-bold flex items-center gap-0.5">
+                      {!isAdminUser && <ShieldAlert className="w-2.5 h-2.5 text-amber-500" />}
+                      Advanced
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-(--text-secondary) leading-tight">
+                    Clears Windows Prefetch optimization logs and system log files.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2.5 shrink-0 ml-3">
+                  {(cleanerState === "scanning" || cleanerState === "cleaning") && cleanPrefetchLogs ? (
+                    <Loader2 className="w-3.5 h-3.5 text-(--accent-color) animate-spin" />
+                  ) : (
+                    scanResults && (
+                      <span className="text-[11px] font-bold text-(--text-secondary)">
+                        {formatSize(scanResults.prefetch_logs_size)}
+                      </span>
+                    )
+                  )}
+                  <Switch
+                    checked={cleanPrefetchLogs}
+                    disabled={cleanerState === "scanning" || cleanerState === "cleaning" || cleanerState === "finished"}
+                    onCheckedChange={setCleanPrefetchLogs}
+                  />
+                </div>
+              </div>
+
+              {/* Category 3: App Cache & Data */}
+              <div className="flex items-center justify-between bg-(--bg-primary) p-2.5 rounded-xl border border-(--border-color)">
+                <div className="flex flex-col gap-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-(--text-primary)">
+                      App Cache & Logs
+                    </span>
+                    <span className="text-[9px] bg-blue-500/10 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded-full font-bold">
+                      Toolkit
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-(--text-secondary) leading-tight">
+                    Clears logs and temporary folder data for Computer Toolkit app.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2.5 shrink-0 ml-3">
+                  {(cleanerState === "scanning" || cleanerState === "cleaning") && cleanAppCache ? (
+                    <Loader2 className="w-3.5 h-3.5 text-(--accent-color) animate-spin" />
+                  ) : (
+                    scanResults && (
+                      <span className="text-[11px] font-bold text-(--text-secondary)">
+                        {formatSize(scanResults.app_cache_size)}
+                      </span>
+                    )
+                  )}
+                  <Switch
+                    checked={cleanAppCache}
+                    disabled={cleanerState === "scanning" || cleanerState === "cleaning" || cleanerState === "finished"}
+                    onCheckedChange={setCleanAppCache}
+                  />
+                </div>
+              </div>
+
+            </div>
+
+            {/* Actions & Result details */}
+            <div className="mt-1">
+              {cleanerState === "idle" && (
+                <Button
+                  onClick={handleScan}
+                  disabled={!cleanTemp && !cleanPrefetchLogs && !cleanAppCache}
+                  className="w-full font-bold text-xs bg-(--accent-color) text-white hover:bg-(--accent-hover) border-0 py-2 cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <Wind className="w-3.5 h-3.5" />
+                  Scan System
+                </Button>
+              )}
+
+              {cleanerState === "scanning" && (
+                <Button
+                  disabled
+                  className="w-full font-bold text-xs bg-(--accent-light) text-(--accent-color) border border-(--accent-color)/20 py-2 flex items-center justify-center gap-2"
+                >
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  Scanning Directories...
+                </Button>
+              )}
+
+              {cleanerState === "scanned" && scanResults && (
+                <div className="flex flex-col gap-3 animate-[fade-in_0.2s_ease-out]">
+                  {/* Summary of findings */}
+                  <div className="bg-(--accent-light)/40 border border-(--accent-color)/10 p-2.5 rounded-xl text-center flex justify-around items-center">
+                    <div>
+                      <span className="text-[9px] text-(--text-secondary) block leading-tight">Total Junk Detected</span>
+                      <span className="text-lg font-black text-(--accent-color) block mt-0.5">
+                        {formatSize(
+                          (cleanTemp ? scanResults.temp_files_size : 0) +
+                          (cleanPrefetchLogs ? scanResults.prefetch_logs_size : 0) +
+                          (cleanAppCache ? scanResults.app_cache_size : 0)
+                        )}
+                      </span>
+                    </div>
+                    <div className="border-l border-(--border-color) h-8" />
+                    <div>
+                      <span className="text-[9px] text-(--text-secondary) block leading-tight">Total Files</span>
+                      <span className="text-lg font-black text-(--text-primary) block mt-0.5">
+                        {(cleanTemp ? scanResults.temp_files_count : 0) +
+                         (cleanPrefetchLogs ? scanResults.prefetch_logs_count : 0) +
+                         (cleanAppCache ? scanResults.app_cache_count : 0)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={handleResetCleaner}
+                      className="flex-1 font-bold text-xs cursor-pointer py-1.5"
+                    >
+                      Cancel
+                    </Button>
+                    {!isAdminUser && cleanPrefetchLogs ? (
+                      <Button
+                        onClick={async () => {
+                          try {
+                            await safeInvoke("relaunch_as_admin");
+                          } catch (err) {
+                            console.error("Failed to relaunch as admin:", err);
+                          }
+                        }}
+                        className="flex-2 font-bold text-xs bg-amber-600 hover:bg-amber-700 text-white border-0 cursor-pointer flex items-center justify-center gap-1.5 py-1.5"
+                      >
+                        <Shield className="w-3.5 h-3.5" />
+                        Clean & Relaunch as Admin
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={handleClean}
+                        disabled={
+                          (!cleanTemp || scanResults.temp_files_size === 0) &&
+                          (!cleanPrefetchLogs || scanResults.prefetch_logs_size === 0) &&
+                          (!cleanAppCache || scanResults.app_cache_size === 0)
+                        }
+                        className="flex-2 font-bold text-xs bg-emerald-600 hover:bg-emerald-700 text-white border-0 cursor-pointer flex items-center justify-center gap-1.5 py-1.5"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        Clean System
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {cleanerState === "cleaning" && (
+                <Button
+                  disabled
+                  className="w-full font-bold text-xs bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 py-2 flex items-center justify-center gap-2"
+                >
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  Cleaning Cache Files...
+                </Button>
+              )}
+
+              {cleanerState === "finished" && cleanResults && (
+                <div className="flex flex-col gap-2.5 text-center animate-[fade-in_0.3s_ease-out]">
+                  <div className="flex flex-col items-center justify-center gap-1">
+                    <div className="p-1.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                      <CheckCircle2 className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-(--text-primary)">
+                        System Cache Cleaned!
+                      </h4>
+                      <p className="text-[10px] text-(--text-secondary) mt-0.5">
+                        Freed <span className="font-extrabold text-emerald-600 dark:text-emerald-400">{formatSize(cleanResults.deleted_size)}</span> of disk space.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="bg-(--bg-primary) border border-(--border-color) p-2.5 rounded-xl text-left flex flex-col gap-1 text-[10px]">
+                    <div className="flex justify-between text-(--text-secondary) font-semibold">
+                      <span>Files Deleted:</span>
+                      <span className="text-(--text-primary)">{cleanResults.deleted_count} files</span>
+                    </div>
+                    {cleanResults.skipped_count > 0 && (
+                      <>
+                        <div className="border-t border-(--border-color)/40 my-0.5" />
+                        <div className="flex justify-between text-(--text-secondary) font-semibold">
+                          <span>Files Skipped (In Use):</span>
+                          <span className="text-amber-600 dark:text-amber-400">
+                            {cleanResults.skipped_count} files ({formatSize(cleanResults.skipped_size)})
+                          </span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  <Button
+                    onClick={handleResetCleaner}
+                    className="w-full font-bold text-xs bg-(--accent-color) text-white hover:bg-(--accent-hover) border-0 py-2 cursor-pointer"
+                  >
+                    Done
+                  </Button>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>

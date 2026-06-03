@@ -1,4 +1,29 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { invoke } from "@tauri-apps/api/core";
+
+const safeInvoke = async <T,>(cmd: string, args?: Record<string, any>): Promise<T> => {
+  try {
+    if ((window as any).__TAURI_INTERNALS__) {
+      return await invoke<T>(cmd, args);
+    } else {
+      console.warn(`[Tauri Mock] invoke("${cmd}") called in browser with args:`, args);
+      await new Promise((resolve) => setTimeout(resolve, 120));
+      if (cmd === "read_alarms") {
+        return (localStorage.getItem("alarms") ?? "[]") as T;
+      }
+      if (cmd === "write_alarms") {
+        const json = args?.alarmsJson ?? args?.alarms_json ?? "[]";
+        localStorage.setItem("alarms", json);
+        return null as T;
+      }
+      throw new Error(`Mock command "${cmd}" not implemented`);
+    }
+  } catch (err) {
+    console.error(`Error invoking command "${cmd}":`, err);
+    throw err;
+  }
+};
+
 import {
   Card,
   CardContent,
@@ -96,19 +121,8 @@ const formatDate = (date: Date): string =>
 export default function AlarmClockPage() {
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  // ─── Lazy-initialize alarms from localStorage ───────────────────────────────
-  // IMPORTANT: must be a lazy initializer (callback form of useState), NOT a
-  // separate useEffect load.  A save-effect runs after every render — if alarms
-  // starts as [] and the load is async, the save-effect fires with [] BEFORE the
-  // load resolves, permanently erasing any stored alarms.
-  const [alarms, setAlarms] = useState<Alarm[]>(() => {
-    try {
-      const stored = localStorage.getItem("alarms");
-      return stored ? (JSON.parse(stored) as Alarm[]) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [alarms, setAlarms] = useState<Alarm[]>([]);
+  const [isLoaded, setIsLoaded] = useState(false);
   const [audioFiles, setAudioFiles] = useState<AudioFile[]>([]);
   const [selectedSoundId, setSelectedSoundId] = useState<string>("beep");
 
@@ -134,7 +148,7 @@ export default function AlarmClockPage() {
   // Inline delete confirmation (replaces browser confirm())
   const [pendingDeleteAudioId, setPendingDeleteAudioId] = useState<string | null>(null);
 
-  // ─── Initial Load (audio files only — alarms are loaded via lazy useState) ──
+  // ─── Initial Load (audio files and persistent alarms) ──
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -144,13 +158,38 @@ export default function AlarmClockPage() {
         console.error("Failed to load audio files from DB", err);
       }
     };
+    const loadAlarms = async () => {
+      try {
+        const alarmsJson = await safeInvoke<string>("read_alarms");
+        if (alarmsJson) {
+          const parsed = JSON.parse(alarmsJson);
+          if (Array.isArray(parsed)) {
+            setAlarms(parsed);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load alarms from file", err);
+      } finally {
+        setIsLoaded(true);
+      }
+    };
     loadData();
+    loadAlarms();
   }, []);
 
-  // Save alarms to localStorage on change
+  // Save alarms to backend file persistence on change
   useEffect(() => {
-    localStorage.setItem("alarms", JSON.stringify(alarms));
-  }, [alarms]);
+    if (isLoaded) {
+      const saveAlarms = async () => {
+        try {
+          await safeInvoke("write_alarms", { alarmsJson: JSON.stringify(alarms) });
+        } catch (err) {
+          console.error("Failed to save alarms to file", err);
+        }
+      };
+      saveAlarms();
+    }
+  }, [alarms, isLoaded]);
 
   // ─── Clock Tick + Alarm Check ─────────────────────────────────────────────
   // Combined into one interval: clock updates AND alarm check happen together,
@@ -425,7 +464,7 @@ export default function AlarmClockPage() {
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
-    <div className="mx-auto w-full max-w-7xl flex flex-col gap-5 px-1 sm:px-0">
+    <div className="w-full h-full flex flex-col gap-3 select-none overflow-hidden p-1">
       {/* Alarm Trigger Fullscreen Overlay */}
       {triggeredAlarm && (
         <div className="alarm-trigger-overlay">
@@ -472,7 +511,7 @@ export default function AlarmClockPage() {
       )}
 
       {/* Top Section: Compact Clock and Date */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 sm:p-4 rounded-2xl border border-border bg-card/60 select-none shadow-sm gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between p-2.5 sm:p-3 rounded-2xl border border-border bg-card/60 select-none shadow-sm gap-2 shrink-0">
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 w-full sm:w-auto">
           <Clock className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-(--accent-color)" />
           <span className="min-w-0 whitespace-nowrap text-[clamp(1.1rem,4.2vw,2rem)] font-extrabold tracking-tight text-foreground tabular-nums font-mono leading-none">
@@ -491,69 +530,57 @@ export default function AlarmClockPage() {
       </div>
 
       {/* Grid: 1 col on mobile, 2 col on md, 3 col on xl */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 lg:gap-6 w-full">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 w-full flex-1 min-h-0">
 
         {/* Column 1: Set New Alarm */}
-        <Card className="shadow-md border border-border rounded-2xl flex flex-col bg-card/60 overflow-hidden">
-          <CardHeader className="p-5 sm:p-6 pb-0 shrink-0">
+        <Card className="shadow-md border border-border rounded-2xl flex flex-col bg-card/60 overflow-hidden min-h-0">
+          <CardHeader className="p-4 pb-2 shrink-0">
             <CardTitle className="text-base font-bold flex items-center gap-2.5">
               <Clock className="w-4.5 h-4.5 text-(--accent-color)" />
               Set New Alarm
             </CardTitle>
             <CardDescription className="text-xs text-muted-foreground">Schedule a custom alarm event.</CardDescription>
           </CardHeader>
-          <CardContent className="p-5 sm:p-6 pt-5 flex flex-col gap-5 flex-1 justify-between">
+          <CardContent className="p-4 pb-3 pt-2.5 flex flex-col gap-3 flex-1 min-h-0 justify-between overflow-y-auto alarm-scrollbar">
 
-            <div className="flex flex-col gap-4">
-              <div className="grid grid-cols-1 lg:grid-cols-[1.15fr_0.85fr] gap-4">
+            <div className="flex flex-col gap-3">
+              {/* Label input (top row) */}
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-muted-foreground">Label</label>
+                <Input
+                  type="text"
+                  placeholder="Wake up!"
+                  className="font-medium h-9 px-3 rounded-xl w-full text-xs"
+                  value={newAlarmLabel}
+                  onChange={(e) => setNewAlarmLabel(e.target.value)}
+                />
+              </div>
 
-                {/* Time input */}
-                <div className="flex flex-col gap-2">
-                  <label className="text-xs font-bold text-muted-foreground">Time (12h)</label>
-                  <div className="flex w-full flex-col gap-2 bg-(--bg-primary) px-2.5 py-2 sm:px-3 rounded-xl border border-(--border-color)">
-                    <div className="grid grid-cols-[minmax(3rem,1fr)_auto_minmax(3rem,1fr)] items-center gap-1.5 lg:grid-cols-[minmax(3.5rem,1fr)_auto_minmax(3.5rem,1fr)_auto]">
-                      <select
-                        value={newAlarmHour}
-                        onChange={(e) => { setNewAlarmHour(Number(e.target.value)); setError(null); }}
-                        className="min-w-[48px] w-full bg-transparent text-sm font-bold font-mono focus:outline-none cursor-pointer text-center py-1 text-foreground appearance-none"
-                      >
-                        {Array.from({ length: 12 }, (_, i) => i + 1).map((h) => (
-                          <option key={h} value={h} className="bg-popover text-foreground">{String(h).padStart(2, "0")}</option>
-                        ))}
-                      </select>
-                      <span className="text-muted-foreground font-semibold font-mono">:</span>
-                      <select
-                        value={newAlarmMinute}
-                        onChange={(e) => { setNewAlarmMinute(Number(e.target.value)); setError(null); }}
-                        className="min-w-[48px] w-full bg-transparent text-sm font-bold font-mono focus:outline-none cursor-pointer text-center py-1 text-foreground appearance-none"
-                      >
-                        {Array.from({ length: 60 }, (_, i) => i).map((m) => (
-                          <option key={m} value={m} className="bg-popover text-foreground">{String(m).padStart(2, "0")}</option>
-                        ))}
-                      </select>
-                      <div className="hidden lg:grid grid-cols-2 w-21 bg-(--bg-sidebar-hover) rounded-lg p-0.5 border border-border/10 shrink-0 select-none">
-                        <button
-                          type="button"
-                          onClick={() => { setNewAlarmPeriod("AM"); setError(null); }}
-                          className={`h-7 text-[10px] font-extrabold rounded-md transition-all cursor-pointer ${
-                            newAlarmPeriod === "AM"
-                              ? "bg-(--accent-color) text-white shadow-sm"
-                              : "bg-transparent text-muted-foreground hover:text-foreground"
-                          }`}
-                        >AM</button>
-                        <button
-                          type="button"
-                          onClick={() => { setNewAlarmPeriod("PM"); setError(null); }}
-                          className={`h-7 text-[10px] font-extrabold rounded-md transition-all cursor-pointer ${
-                            newAlarmPeriod === "PM"
-                              ? "bg-(--accent-color) text-white shadow-sm"
-                              : "bg-transparent text-muted-foreground hover:text-foreground"
-                          }`}
-                        >PM</button>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 lg:hidden w-full bg-(--bg-sidebar-hover) rounded-lg p-0.5 border border-border/10 shrink-0 select-none">
+              {/* Time input (second row) */}
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-muted-foreground">Time (12h)</label>
+                <div className="flex w-full flex-col gap-1.5 bg-(--bg-primary) px-2 py-1.5 sm:px-2.5 rounded-xl border border-(--border-color)">
+                  <div className="grid grid-cols-[minmax(3rem,1fr)_auto_minmax(3rem,1fr)] items-center gap-1.5 lg:grid-cols-[minmax(3.5rem,1fr)_auto_minmax(3.5rem,1fr)_auto]">
+                    <select
+                      value={newAlarmHour}
+                      onChange={(e) => { setNewAlarmHour(Number(e.target.value)); setError(null); }}
+                      className="min-w-[48px] w-full bg-transparent text-sm font-bold font-mono focus:outline-none cursor-pointer text-center py-1 text-foreground appearance-none"
+                    >
+                      {Array.from({ length: 12 }, (_, i) => i + 1).map((h) => (
+                        <option key={h} value={h} className="bg-popover text-foreground">{String(h).padStart(2, "0")}</option>
+                      ))}
+                    </select>
+                    <span className="text-muted-foreground font-semibold font-mono">:</span>
+                    <select
+                      value={newAlarmMinute}
+                      onChange={(e) => { setNewAlarmMinute(Number(e.target.value)); setError(null); }}
+                      className="min-w-[48px] w-full bg-transparent text-sm font-bold font-mono focus:outline-none cursor-pointer text-center py-1 text-foreground appearance-none"
+                    >
+                      {Array.from({ length: 60 }, (_, i) => i).map((m) => (
+                        <option key={m} value={m} className="bg-popover text-foreground">{String(m).padStart(2, "0")}</option>
+                      ))}
+                    </select>
+                    <div className="hidden lg:grid grid-cols-2 w-21 bg-(--bg-sidebar-hover) rounded-lg p-0.5 border border-border/10 shrink-0 select-none">
                       <button
                         type="button"
                         onClick={() => { setNewAlarmPeriod("AM"); setError(null); }}
@@ -574,25 +601,34 @@ export default function AlarmClockPage() {
                       >PM</button>
                     </div>
                   </div>
-                </div>
 
-                {/* Label input */}
-                <div className="flex flex-col gap-2">
-                  <label className="text-xs font-bold text-muted-foreground">Label</label>
-                  <Input
-                    type="text"
-                    placeholder="Wake up!"
-                    className="font-medium h-10.5 rounded-xl min-w-[120px]"
-                    value={newAlarmLabel}
-                    onChange={(e) => setNewAlarmLabel(e.target.value)}
-                  />
+                  <div className="grid grid-cols-2 lg:hidden w-full bg-(--bg-sidebar-hover) rounded-lg p-0.5 border border-border/10 shrink-0 select-none">
+                    <button
+                      type="button"
+                      onClick={() => { setNewAlarmPeriod("AM"); setError(null); }}
+                      className={`h-7 text-[10px] font-extrabold rounded-md transition-all cursor-pointer ${
+                        newAlarmPeriod === "AM"
+                          ? "bg-(--accent-color) text-white shadow-sm"
+                          : "bg-transparent text-muted-foreground hover:text-foreground"
+                      }`}
+                    >AM</button>
+                    <button
+                      type="button"
+                      onClick={() => { setNewAlarmPeriod("PM"); setError(null); }}
+                      className={`h-7 text-[10px] font-extrabold rounded-md transition-all cursor-pointer ${
+                        newAlarmPeriod === "PM"
+                          ? "bg-(--accent-color) text-white shadow-sm"
+                          : "bg-transparent text-muted-foreground hover:text-foreground"
+                      }`}
+                    >PM</button>
+                  </div>
                 </div>
               </div>
 
               {/* Preset Times */}
-              <div className="flex flex-col gap-2.5 mt-2">
+              <div className="flex flex-col gap-1.5 mt-1">
                 <label className="text-xs font-bold text-muted-foreground">Preset Times</label>
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-1.5">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-1">
                   {PRESET_TIMES_12H.map((preset, idx) => {
                     const presetTime24h = format12hTo24h(preset.hour, preset.minute, preset.period);
                     const currentInput24h = format12hTo24h(newAlarmHour, newAlarmMinute, newAlarmPeriod);
@@ -603,8 +639,7 @@ export default function AlarmClockPage() {
                         key={idx}
                         type="button"
                         variant={isSelected ? "default" : "outline"}
-                        size="xs"
-                        className={`font-semibold font-mono text-[10px] py-2 transition-all ${
+                        className={`h-7 font-semibold font-mono text-[10px] px-1 transition-all ${
                           isDuplicate ? "opacity-50 border-dashed text-muted-foreground" : ""
                         }`}
                         onClick={() => {
@@ -622,20 +657,20 @@ export default function AlarmClockPage() {
                 </div>
 
                 {/* Adjust Controls */}
-                <div className="flex items-center justify-between mt-1 text-xs bg-(--bg-primary)/50 p-2 rounded-xl border border-border/30">
+                <div className="flex items-center justify-between mt-0.5 text-xs bg-(--bg-primary)/50 p-1.5 rounded-xl border border-border/30">
                   <span className="font-bold text-muted-foreground">Adjust Input Time</span>
-                  <div className="flex gap-1.5">
-                    <Button type="button" variant="outline" size="xs" className="font-bold text-[10px] h-7 px-2.5" onClick={() => handleAdjustTime(-15)} title="Subtract 15 minutes">-15m</Button>
-                    <Button type="button" variant="outline" size="xs" className="font-bold text-[10px] h-7 px-2.5" onClick={() => handleAdjustTime(15)} title="Add 15 minutes">+15m</Button>
+                  <div className="flex gap-1">
+                    <Button type="button" variant="outline" className="font-bold text-[10px] h-7 px-2" onClick={() => handleAdjustTime(-15)} title="Subtract 15 minutes">-15m</Button>
+                    <Button type="button" variant="outline" className="font-bold text-[10px] h-7 px-2" onClick={() => handleAdjustTime(15)} title="Add 15 minutes">+15m</Button>
                   </div>
                 </div>
               </div>
 
               {/* Sound Selector */}
-              <div className="flex flex-col gap-2 mt-2">
+              <div className="flex flex-col gap-1 mt-1.5">
                 <label className="text-xs font-bold text-muted-foreground">Alarm Sound</label>
                 <Select value={selectedSoundId} onValueChange={setSelectedSoundId}>
-                  <SelectTrigger className="w-full font-semibold h-10.5 rounded-xl border-border min-w-[140px]">
+                  <SelectTrigger size="sm" className="w-full font-semibold rounded-xl border-border min-w-[140px] text-xs">
                     <SelectValue placeholder="Select sound" />
                   </SelectTrigger>
                   <SelectContent className="bg-popover text-foreground">
@@ -666,7 +701,7 @@ export default function AlarmClockPage() {
                   <span>{error}</span>
                 </div>
               )}
-              <Button className="w-full font-bold h-11 rounded-xl cursor-pointer" onClick={handleAddAlarm}>
+              <Button className="w-full font-bold h-10 rounded-xl cursor-pointer" onClick={handleAddAlarm}>
                 Create Alarm
               </Button>
             </div>
@@ -674,15 +709,15 @@ export default function AlarmClockPage() {
         </Card>
 
         {/* Column 2: Custom Alarm Sounds */}
-        <Card className="shadow-md border border-border rounded-2xl flex flex-col bg-card/60 overflow-hidden">
-          <CardHeader className="p-5 sm:p-6 pb-0 shrink-0">
+        <Card className="shadow-md border border-border rounded-2xl flex flex-col bg-card/60 overflow-hidden min-h-0">
+          <CardHeader className="p-4 pb-2 shrink-0">
             <CardTitle className="text-base font-bold flex items-center gap-2.5">
               <Music className="w-4.5 h-4.5 text-(--accent-color)" />
               Custom Alarm Sounds
             </CardTitle>
             <CardDescription className="text-xs text-muted-foreground">Upload your audio tracks to play when alarms trigger.</CardDescription>
           </CardHeader>
-          <CardContent className="p-5 sm:p-6 pt-5 flex flex-col gap-4 flex-1 min-h-0 justify-start">
+          <CardContent className="p-4 pt-3 flex flex-col gap-3 flex-1 min-h-0 justify-start">
             <div className="import-zone shrink-0 flex flex-col items-center justify-center py-5 sm:py-6 border-dashed border-2 rounded-xl bg-black/5 hover:bg-black/10 transition-all cursor-pointer relative">
               <UploadCloud className="w-8 h-8 sm:w-9 sm:h-9 text-(--accent-color) mb-1" />
               <p className="text-xs sm:text-sm font-semibold text-foreground text-center px-2">
@@ -700,18 +735,18 @@ export default function AlarmClockPage() {
               />
             </div>
 
-            <div className="flex flex-col gap-2.5 flex-1 min-h-0 mt-1 overflow-hidden">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mb-1.5">
+            <div className="flex flex-col gap-2 flex-1 min-h-0 overflow-hidden">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 shrink-0">
                 <Music className="w-3.5 h-3.5 text-(--accent-color)" />
                 Your Tracks ({audioFiles.length})
               </h4>
 
               {audioFiles.length === 0 ? (
-                <div className="grow flex items-center justify-center border border-dashed rounded-xl bg-muted/10 p-6 text-center text-xs text-muted-foreground">
+                <div className="flex-1 flex items-center justify-center border border-dashed rounded-xl bg-muted/10 p-6 text-center text-xs text-muted-foreground">
                   No custom sounds uploaded yet.
                 </div>
               ) : (
-                <div className="audio-list flex-1 overflow-y-auto flex flex-col gap-1.5 pr-1 scrollbar-thin" style={{ maxHeight: "320px", contentVisibility: "auto" }}>
+                <div className="audio-list flex-1 min-h-0 overflow-y-auto flex flex-col gap-1.5 pr-1.5 alarm-scrollbar">
                   {audioFiles.map((file) => (
                     <div
                       key={file.id}
@@ -764,21 +799,21 @@ export default function AlarmClockPage() {
         </Card>
 
         {/* Column 3: Active Alarms */}
-        <Card className="shadow-md border border-border rounded-2xl flex flex-col bg-card/60 overflow-hidden md:col-span-2 xl:col-span-1">
-          <CardHeader className="p-5 sm:p-6 pb-0 shrink-0">
+        <Card className="shadow-md border border-border rounded-2xl flex flex-col bg-card/60 overflow-hidden min-h-0 md:col-span-2 xl:col-span-1">
+          <CardHeader className="p-4 pb-2 shrink-0">
             <CardTitle className="text-base font-bold flex items-center gap-2.5">
               <Bell className="w-4.5 h-4.5 text-(--accent-color)" />
               Active Alarms ({alarms.length})
             </CardTitle>
             <CardDescription className="text-xs text-muted-foreground">Toggle and manage active scheduled alarms.</CardDescription>
           </CardHeader>
-          <CardContent className="p-5 sm:p-6 pt-5 flex flex-col gap-4 flex-1 min-h-0 justify-start">
+          <CardContent className="p-4 pt-3 flex flex-col gap-3 flex-1 min-h-0 justify-start">
             {alarms.length === 0 ? (
-              <div className="grow flex items-center justify-center border border-dashed rounded-xl bg-muted/10 p-6 text-center text-xs text-muted-foreground">
+              <div className="flex-1 flex items-center justify-center border border-dashed rounded-xl bg-muted/10 p-6 text-center text-xs text-muted-foreground">
                 No alarms scheduled.
               </div>
             ) : (
-              <div className="alarm-list flex-1 min-h-0 overflow-y-auto flex flex-col gap-2.5 pr-1.5 alarm-scrollbar" style={{ maxHeight: "400px" }}>
+              <div className="alarm-list flex-1 min-h-0 overflow-y-auto flex flex-col gap-2 pr-1.5 alarm-scrollbar">
                 {alarms.map((alarm) => {
                   const soundFile = audioFiles.find((f) => f.id === alarm.soundId);
                   const soundName = alarm.soundId === "beep" ? "System Beep" : soundFile ? soundFile.name : "Unknown Sound";

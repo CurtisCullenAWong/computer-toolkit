@@ -610,7 +610,7 @@ export default function AppLayout() {
           </div>
         )}
 
-        <div className="grow min-h-0 select-text overflow-y-auto">
+        <div className="grow min-h-0 h-full select-text overflow-hidden">
           <Routes>
             {routesToRegister.map((r) => {
               const Component = r.component;
