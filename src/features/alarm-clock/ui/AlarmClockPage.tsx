@@ -464,7 +464,7 @@ export default function AlarmClockPage() {
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
-    <div className="w-full h-full flex flex-col gap-3 select-none overflow-hidden p-1">
+    <div className="w-full h-full flex flex-col gap-3 select-none overflow-y-auto p-1">
       {/* Alarm Trigger Fullscreen Overlay */}
       {triggeredAlarm && (
         <div className="alarm-trigger-overlay">
@@ -530,10 +530,10 @@ export default function AlarmClockPage() {
       </div>
 
       {/* Grid: 1 col on mobile, 2 col on md, 3 col on xl */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 w-full flex-1 min-h-0">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 w-full sm:flex-1 sm:min-h-0">
 
         {/* Column 1: Set New Alarm */}
-        <Card className="shadow-md border border-border rounded-2xl flex flex-col bg-card/60 overflow-hidden min-h-0">
+        <Card className="shadow-md border border-border rounded-2xl flex flex-col bg-card/60 sm:overflow-hidden min-h-0">
           <CardHeader className="p-4 pb-2 shrink-0">
             <CardTitle className="text-base font-bold flex items-center gap-2.5">
               <Clock className="w-4.5 h-4.5 text-(--accent-color)" />

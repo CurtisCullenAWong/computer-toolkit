@@ -245,8 +245,8 @@ export default function ShutdownTimerPage() {
   const warningActive = status === "running" && timeLeft > 0 && timeLeft <= WARNING_THRESHOLD_SECONDS;
 
   return (
-    <div className="w-full min-h-full flex items-center justify-center p-4">
-      <Card className="w-full max-w-3xl shadow-xl border border-border bg-card/60 text-card-foreground rounded-2xl flex flex-col min-h-144">
+    <div className="w-full min-h-full flex items-center justify-center p-2 sm:p-4">
+      <Card className="w-full max-w-3xl shadow-xl border border-border bg-card/60 text-card-foreground rounded-2xl flex flex-col">
 
         <CardHeader className="p-6 pb-0 shrink-0 text-center">
           <CardTitle className="text-2xl font-bold tracking-tight flex items-center justify-center gap-2">
@@ -258,11 +258,11 @@ export default function ShutdownTimerPage() {
           </CardDescription>
         </CardHeader>
 
-        <CardContent className="p-6 pt-6 grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-12 items-center flex-1">
+        <CardContent className="p-4 sm:p-6 pt-4 sm:pt-6 grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-10 lg:gap-12 items-center flex-1">
 
           {/* Left Column: Circular Progress Countdown */}
-          <div className="flex flex-col items-center justify-center w-full min-h-0 py-2 md:py-6">
-            <div className="relative w-full max-w-[240px] sm:max-w-[260px] md:max-w-[280px] lg:max-w-[300px] flex items-center justify-center aspect-square select-none mx-auto">
+          <div className="flex flex-col items-center justify-center w-full min-h-0 py-2 sm:py-4 lg:py-6">
+            <div className="relative w-full max-w-[180px] sm:max-w-[220px] md:max-w-[260px] lg:max-w-[300px] flex items-center justify-center aspect-square select-none mx-auto">
               <svg className="w-full h-full transform -rotate-90" viewBox={`0 0 ${viewSize} ${viewSize}`}>
                 <circle
                   className="fill-none stroke-muted"

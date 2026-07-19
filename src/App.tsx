@@ -15,6 +15,8 @@ import {
   FileText,
   Settings,
   Home,
+  Menu,
+  X,
 } from "lucide-react";
 import { features } from "./features";
 import {
@@ -107,6 +109,9 @@ export default function AppLayout() {
     return localStorage.getItem("sidebar_collapsed") === "true";
   });
 
+  // Mobile sidebar open/close state
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+
   const location = useLocation();
   const [isDarkActive, setIsDarkActive] = useState(false);
 
@@ -190,6 +195,11 @@ export default function AppLayout() {
       if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
     };
   }, []);
+
+  // Close mobile sidebar on route change
+  useEffect(() => {
+    setIsMobileOpen(false);
+  }, [location.pathname]);
 
   // Auto-expand active feature parent
   useEffect(() => {
@@ -300,7 +310,7 @@ export default function AppLayout() {
   }, [enabledFeatures]);
 
   return (
-    <div className="flex h-screen w-screen min-w-[800px] min-h-[600px] bg-(--bg-primary) overflow-x-auto overflow-y-auto select-none">
+    <div className="flex h-screen w-screen bg-(--bg-primary) overflow-hidden select-none">
       {/* Custom Global Tooltip */}
       {isCollapsed && hoveredLabel && hoveredCoords && (
         <div
@@ -341,10 +351,24 @@ export default function AppLayout() {
         </div>
       )}
 
+      {/* Mobile Sidebar Overlay Backdrop */}
+      {isMobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm md:hidden"
+          onClick={() => setIsMobileOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
       <div
-        className={`${isCollapsed ? "w-19" : "w-65"
-          } bg-(--bg-sidebar) text-(--text-sidebar) flex flex-col justify-between border-r border-(--border-color) p-4 shrink-0 transition-all duration-300 ease-in-out relative`}
+        className={`${
+          // On mobile: fixed slide-over drawer
+          isMobileOpen
+            ? "fixed inset-y-0 left-0 z-50 translate-x-0"
+            : "fixed inset-y-0 left-0 z-50 -translate-x-full md:relative md:translate-x-0"
+        } ${
+          isCollapsed ? "w-19" : "w-65"
+        } bg-(--bg-sidebar) text-(--text-sidebar) flex flex-col justify-between border-r border-(--border-color) p-4 shrink-0 transition-all duration-300 ease-in-out`}
       >
         <div className="flex flex-col gap-6 overflow-y-auto overflow-x-hidden flex-1 min-h-0 sidebar-scrollbar">
           {/* Header & Logo */}
@@ -355,13 +379,23 @@ export default function AppLayout() {
                   <Terminal className="w-6 h-6 text-(--accent-color) shrink-0" />
                   <span className="truncate">Computer Toolkit</span>
                 </h2>
-                <button
-                  onClick={() => setIsCollapsed(true)}
-                  className="p-1.5 rounded-lg hover:bg-(--bg-sidebar-hover) text-(--text-sidebar) hover:text-(--text-sidebar-title) transition-all cursor-pointer shrink-0"
-                  title="Collapse Sidebar"
-                >
-                  <ChevronLeft className="w-4.5 h-4.5" />
-                </button>
+                <div className="flex items-center gap-1">
+                  {/* Mobile close button (only visible on small screens) */}
+                  <button
+                    onClick={() => setIsMobileOpen(false)}
+                    className="md:hidden p-1.5 rounded-lg hover:bg-(--bg-sidebar-hover) text-(--text-sidebar) hover:text-(--text-sidebar-title) transition-all cursor-pointer shrink-0"
+                    title="Close Sidebar"
+                  >
+                    <X className="w-4.5 h-4.5" />
+                  </button>
+                  <button
+                    onClick={() => setIsCollapsed(true)}
+                    className="hidden md:block p-1.5 rounded-lg hover:bg-(--bg-sidebar-hover) text-(--text-sidebar) hover:text-(--text-sidebar-title) transition-all cursor-pointer shrink-0"
+                    title="Collapse Sidebar"
+                  >
+                    <ChevronLeft className="w-4.5 h-4.5" />
+                  </button>
+                </div>
               </>
             ) : (
               <div className="w-full flex flex-col items-center gap-4">
@@ -600,17 +634,33 @@ export default function AppLayout() {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden py-6 px-8 bg-(--bg-primary)">
+      <div className="flex-1 flex flex-col overflow-hidden py-4 px-4 sm:py-6 sm:px-8 bg-(--bg-primary)">
+        {/* Mobile header bar with hamburger */}
+        <div className="flex items-center gap-3 mb-4 md:hidden shrink-0">
+          <button
+            onClick={() => setIsMobileOpen(true)}
+            className="p-2 rounded-xl bg-(--bg-sidebar) border border-(--border-color) text-(--text-sidebar) hover:text-(--text-sidebar-title) transition-all cursor-pointer"
+            title="Open Menu"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+          <div className="flex items-center gap-2">
+            <Terminal className="w-5 h-5 text-(--accent-color)" />
+            <span className="font-bold text-(--text-primary) tracking-tight text-sm">
+              Computer Toolkit
+            </span>
+          </div>
+        </div>
         {headerName && (
-          <div className="mb-5 select-text animate-[fade-in_0.2s_ease-out]">
-            <h1 className="text-3xl font-extrabold tracking-tight text-(--text-primary) mb-1">
+          <div className="mb-3 sm:mb-5 select-text animate-[fade-in_0.2s_ease-out] shrink-0">
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-(--text-primary) mb-1">
               {headerName}
             </h1>
-            <p className="text-sm text-(--text-secondary)">{headerDesc}</p>
+            <p className="text-xs sm:text-sm text-(--text-secondary)">{headerDesc}</p>
           </div>
         )}
 
-        <div className="grow min-h-0 h-full select-text overflow-hidden">
+        <div className="grow min-h-0 h-full select-text overflow-y-auto">
           <Routes>
             {routesToRegister.map((r) => {
               const Component = r.component;
